@@ -108,7 +108,26 @@ cobro dual: **Wise (USD)** para el exterior y **Mercado Pago / transferencia ban
   sesión, publicar, validación, cambio de clave, rate limit, logout). Guía completa en
   `docs/despliegue.md`.
 - **GitHub**: repo sincronizado con `github.com/ebolivar1000/Totalhiit` (rama `main`); el remoto tenía
-  un commit inicial que se integró. Falta crear el proyecto en Cloudflare (pasos de la dueña).
+  un commit inicial que se integró.
+
+## EN PRODUCCION (publicado 2026-10-22)
+- **Sitio público: https://totalhiit.pages.dev** · **Panel: https://totalhiit.pages.dev/admin**
+  (usuario `admin`, clave `TotalHiit2026!`, definida por la dueña; se puede cambiar en Seguridad).
+- Proyecto de Cloudflare Pages `totalhiit` (cuenta `caribialabs@gmail.com`), deploy por **subida
+  directa con `wrangler pages deploy`** (NO conectado a Git; cada push NO auto-despliega: hay que
+  correr `npm run build` + deploy, o conectar el repo desde el dashboard).
+- KV `SITE_CONTENT` (`2942bb9c7422467989218acbb995983a`) enlazado vía `wrangler.toml`
+  (`kv_namespaces`, también en `[env.production]`). Secretos en Cloudflare: `ADMIN_USER`,
+  `ADMIN_PASSWORD_HASH`, `SESSION_SECRET` (cargados con `wrangler pages secret put`).
+- **Fix crítico**: el runtime de Cloudflare solo permite PBKDF2 hasta **100.000 iteraciones**
+  (con 120.000 daba `NotSupportedError` y el login devolvía 500). Se bajó a 100000 en
+  `functions/_lib/auth.ts` y `scripts/admin-secrets.mjs`.
+- **Verificado end-to-end**: `POST /api/login` 200, `GET /api/session` 200, `POST /api/content` 200
+  (con sesión) y `GET /api/content` devolviendo KV; `/admin` responde 200 (`.html` redirige con 308,
+  es el pretty-URL de Pages). `index.html`, `/fonts/edo.woff`, `/videos/entrenamiento.mp4` y
+  `/images/certificado.jpg` responden 200.
+- Comandos: `npx wrangler pages deploy --project-name totalhiit --branch main` (usa `dist/`),
+  `npx wrangler pages deployment tail https://<hash>.totalhiit.pages.dev --project-name totalhiit`.
 
 ## Verificación visual (sin navegador de escritorio)
 - Se verificó el render con Chrome/Edge headless (`--screenshot`) + análisis de píxeles:
@@ -132,15 +151,19 @@ cobro dual: **Wise (USD)** para el exterior y **Mercado Pago / transferencia ban
   build `npm run build` + salida `dist`, KV `totalhiit-content` como `SITE_CONTENT`, y los secretos
   `ADMIN_USER` / `ADMIN_PASSWORD_HASH` / `SESSION_SECRET` generados con `npm run admin:secrets`.
   Detalle en `docs/despliegue.md`.
+- **Auto-deploy (opcional)**: conectar `github.com/ebolivar1000/Totalhiit` desde el dashboard
+  (Workers & Pages → totalhiit → Settings → Builds → Git Repository) para que cada push a `main`
+  despliegue solo. Hoy el deploy es manual con `wrangler pages deploy`.
 - **Fase 2 (R2)**: bucket `totalhiit-media` + `functions/api/upload.ts` para que el admin suba
   imágenes/videos desde el panel. Hoy los medios viajan en el repo.
 - Revisión visual de la sección Clases en Vivo (video, cards, banner), del logo con el certificado y
   del panel admin en navegador.
 
 ## Próxima tarea
-Crear el proyecto en Cloudflare Pages y cargar KV + secretos siguiendo `docs/despliegue.md`; luego
-probar en producción el login y **Publicar en PROD** en otro navegador. En paralelo: revisión visual
-(Hero, `#vivo`, logo con certificado, panel) y completar `YOUTUBE_URL` y el alias de Mercado Pago.
+El sitio ya está en producción (**https://totalhiit.pages.dev**). Pendiente: revisión visual en
+celular del sitio y del panel; probar **Publicar en PROD** desde `/admin` en un navegador distinto;
+completar `YOUTUBE_URL` y el alias de Mercado Pago; evaluar Fase 2 (R2 para subir medios desde el
+panel) y conectar el repo para auto-deploy.
 
 ## Comandos utiles
 - `npm run dev` → dev server en `http://127.0.0.1:5173/` (LAN: `http://192.168.0.84:5173/`).
@@ -173,6 +196,7 @@ probar en producción el login y **Publicar en PROD** en otro navegador. En para
 - `functions/api/{content,login,logout,session,password}.ts` — API del panel y del contenido.
 - `scripts/api-test.ts` + `scripts/admin-secrets.mjs` — pruebas de la API y generación de secretos.
 - `docs/despliegue.md` — guía paso a paso de Cloudflare Pages (KV, secretos, verificación).
+- `wrangler.toml` — config del proyecto Pages (`totalhiit`) y binding `SITE_CONTENT` (KV).
 - `src/admin/AdminApp.tsx`, `src/admin/main.tsx`, `admin.html` — panel de administración.
 - `src/index.css` — tipografías, `@font-face` de Edo + `.font-edo`, `font-serif-display` y keyframes
   propios (`animate-fade-in`).

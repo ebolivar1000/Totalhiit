@@ -183,8 +183,9 @@ Registrar aquí las decisiones que no deben perderse al cambiar de IA.
 
 ## Decisión 18 — Login del admin validado en el servidor
 - Fecha: 2026-10-22
-- Decisión: `POST /api/login` verifica un hash **PBKDF2-SHA256** (120.000 iteraciones) guardado en
-  KV (`auth`) o, si todavía no se cambió la clave, en los secretos `ADMIN_USER` /
+- Decisión: `POST /api/login` verifica un hash **PBKDF2-SHA256** (100.000 iteraciones — el runtime de
+  Cloudflare rechaza más de 100000) guardado en KV (`auth`) o, si todavía no se cambió la clave, en
+  los secretos `ADMIN_USER` /
   `ADMIN_PASSWORD_HASH`. La sesión es una cookie `th_session` **HttpOnly + Secure +
   SameSite=Strict**, firmada con HMAC-SHA256 usando `SESSION_SECRET`. Hay rate limit de 20 fallos
   cada 10 minutos por IP en KV. `POST /api/password` cambia la clave (KV) y `POST /api/logout` borra
@@ -195,3 +196,17 @@ Registrar aquí las decisiones que no deben perderse al cambiar de IA.
   inseguro).
 - Archivos afectados: `functions/_lib/auth.ts`, `functions/api/{login,logout,session,password}.ts`,
   `src/admin/auth.ts`, `scripts/admin-secrets.mjs`, `scripts/api-test.ts`.
+
+## Decisión 19 — Deploy manual por subida directa (wrangler) en vez de Git
+- Fecha: 2026-10-22
+- Decisión: El proyecto `totalhiit` en Cloudflare Pages se creó y despliega con
+  `wrangler pages deploy` (subida directa) usando `wrangler.toml`. No se conectó la integración Git
+  todavía. KV `SITE_CONTENT` y los secretos se cargan por CLI (`wrangler kv` / `wrangler pages
+  secret put`).
+- Motivo: `wrangler` no permite vincular un proyecto existente de subida directa a Git (Cloudflare lo
+  documenta: "no se puede cambiar a Direct Upload después" y viceversa no hay conversión). La vía por
+  CLI era la única 100% automatizable sin pedirle a la dueña que autorice el GitHub App. Si se quiere
+  auto-deploy por push, hay que **crear otro proyecto** con "Connect to Git" desde el dashboard.
+- Consecuencia: cada push a `main` NO despliega solo; hay que correr `npm run build` y
+  `npx wrangler pages deploy --project-name totalhiit --branch main`.
+- Archivos afectados: `wrangler.toml`, `.gitignore` (`.wrangler/`, `.dev.vars`).

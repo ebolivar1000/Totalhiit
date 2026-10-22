@@ -100,18 +100,23 @@ Desarrollar la plataforma web y clone funcional para TOTALHIIT (+40) enfocada en
 ## Pendiente
 - Completar `YOUTUBE_URL` en `src/data/contact.ts` y el alias de Mercado Pago en
   `src/components/PaymentModal.tsx`.
-- Crear el proyecto en Cloudflare Pages (cuenta de la dueña): conectar el repo, KV `SITE_CONTENT` y
-  los tres secretos; ver `docs/despliegue.md`.
+- Conectar el repo a Git para auto-deploy (opcional; ver Decisión 19).
 - Fase 2: R2 para subir imágenes/videos desde el panel.
 - Agregar el archivo del recetario nutricional mencionado en los planes.
 
 ## Problemas conocidos
-- Sin desplegar todavía: el botón **Publicar en PROD** queda deshabilitado hasta crear el proyecto de
-  Cloudflare.
 - El contenido público tiene caché de borde de 60 s: un cambio puede tardar hasta ~1 minuto en verse.
 - La clave de desarrollo (`src/admin/auth.ts`) no se usa en producción, pero está en el repo; en
   Cloudflare se configura una clave distinta.
 
+## PUBLICADO (2026-10-22)
+- **Sitio: https://totalhiit.pages.dev** · **Panel: https://totalhiit.pages.dev/admin**
+  (usuario `admin`, clave `TotalHiit2026!`).
+- Deploy en Cloudflare Pages con `wrangler` (subida directa, no auto-deploy por Git), KV
+  `SITE_CONTENT` y secretos `ADMIN_USER`/`ADMIN_PASSWORD_HASH`/`SESSION_SECRET`.
+- **Fix**: PBKDF2 bajó de 120.000 a **100.000** iteraciones (Cloudflare no soporta más y el login
+  daba 500). Verificado end-to-end: login, sesión, publicar y leer contenido desde KV.
+
 ## Próxima tarea
-Publicar en Cloudflare Pages siguiendo `docs/despliegue.md` y probar el flujo completo (login +
-Publicar en PROD desde otro navegador). En paralelo, completar los datos de contacto definitivos.
+Probar en producción el login y **Publicar en PROD** desde otro navegador; revisión visual en celular;
+conectar el repo para auto-deploy (opcional); completar los datos de contacto definitivos.

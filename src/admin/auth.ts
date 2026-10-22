@@ -1,16 +1,20 @@
 /**
  * Autenticación del panel de administración.
  *
- * IMPORTANTE: el sitio es estático (sin backend), así que esta protección es del
- * lado del cliente: sirve para separar el panel del sitio público, no como
- * seguridad real. Ver ai/decisions.md (Decisión 13).
+ * En producción (Cloudflare Pages) la clave se valida en el servidor:
+ * `POST /api/login` verifica el hash PBKDF2 guardado en KV o en los secretos y
+ * devuelve una cookie HttpOnly firmada. En desarrollo (Vite, sin Functions) se
+ * usa el hash local de `localStorage` como respaldo.
  */
 
 const CREDS_KEY = 'totalhiit.admin.creds.v1';
 const SESSION_KEY = 'totalhiit.admin.session.v1';
+const USER_KEY = 'totalhiit.admin.user.v1';
 
 export const DEFAULT_ADMIN_USER = 'admin';
 export const DEFAULT_ADMIN_PASSWORD = 'TotalHiit2026!';
+
+export type AuthMode = 'server' | 'local' | 'unknown';
 
 type HashAlgo = 'sha256' | 'fnv1a';
 
@@ -19,6 +23,20 @@ interface StoredCreds {
   passHash: string;
   algo: HashAlgo;
 }
+
+let mode: AuthMode = 'unknown';
+let lastError: string | null = null;
+
+export const getAuthMode = (): AuthMode => mode;
+export const getAuthError = (): string | null => lastError;
+
+/** Solo en dev local tiene sentido caer al hash del navegador. */
+const canUseLocalFallback = (): boolean =>
+  typeof window !== 'undefined' &&
+  ['localhost', '127.0.0.1', '[::1]', ''].includes(window.location.hostname);
+
+const isJson = (res: Response): boolean =>
+  (res.headers.get('Content-Type') || '').includes('application/json');
 
 const fnv1aHash = (value: string): string => {
   let h1 = 0xdeadbeef;
@@ -67,11 +85,10 @@ export const hasCustomCredentials = (): boolean => readCreds() !== null;
 
 export const isLoggedIn = (): boolean => sessionStorage.getItem(SESSION_KEY) === '1';
 
-export const logout = (): void => sessionStorage.removeItem(SESSION_KEY);
+export const getAdminUser = (): string =>
+  localStorage.getItem(USER_KEY) ?? readCreds()?.user ?? DEFAULT_ADMIN_USER;
 
-export const getAdminUser = (): string => readCreds()?.user ?? DEFAULT_ADMIN_USER;
-
-export const login = async (user: string, password: string): Promise<boolean> => {
+const localLogin = async (user: string, password: string): Promise<boolean> => {
   const stored = readCreds();
 
   if (!stored) {
@@ -94,16 +111,111 @@ export const login = async (user: string, password: string): Promise<boolean> =>
   return true;
 };
 
+export const login = async (user: string, password: string): Promise<boolean> => {
+  lastError = null;
+  let res: Response | null = null;
+
+  try {
+    res = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ user: user.trim(), password }),
+    });
+  } catch {
+    res = null;
+  }
+
+  const hasServer = res !== null && isJson(res) && res.status !== 404 && res.status !== 405;
+
+  if (hasServer && res) {
+    mode = 'server';
+    if (res.ok) {
+      sessionStorage.setItem(SESSION_KEY, '1');
+      localStorage.setItem(USER_KEY, user.trim().toLowerCase());
+      return true;
+    }
+    const data = (await res.json().catch(() => null)) as { error?: string } | null;
+    lastError = data?.error ?? 'Usuario o clave incorrectos.';
+    return false;
+  }
+
+  if (!canUseLocalFallback()) {
+    mode = 'server';
+    lastError = 'No se pudo conectar con el servidor del panel.';
+    return false;
+  }
+
+  mode = 'local';
+  const ok = await localLogin(user, password);
+  if (!ok) lastError = 'Usuario o clave incorrectos.';
+  return ok;
+};
+
+/** Recupera la sesión del servidor (cookie HttpOnly) al abrir el panel. */
+export const checkSession = async (): Promise<boolean> => {
+  if (isLoggedIn()) {
+    if (mode === 'unknown') mode = canUseLocalFallback() ? 'local' : 'server';
+    return true;
+  }
+
+  try {
+    const res = await fetch('/api/session', { credentials: 'same-origin' });
+    if (isJson(res) && res.ok) {
+      mode = 'server';
+      const data = (await res.json().catch(() => null)) as { ok?: boolean } | null;
+      if (data?.ok) {
+        sessionStorage.setItem(SESSION_KEY, '1');
+        return true;
+      }
+      return false;
+    }
+  } catch {
+    /* sin red o sin backend */
+  }
+
+  mode = canUseLocalFallback() ? 'local' : 'server';
+  return false;
+};
+
+export const logout = (): void => {
+  sessionStorage.removeItem(SESSION_KEY);
+  localStorage.removeItem(USER_KEY);
+  if (mode === 'server') {
+    fetch('/api/logout', { method: 'POST', credentials: 'same-origin' }).catch(() => undefined);
+  }
+};
+
 /** Devuelve el mensaje de error, o null si el cambio fue exitoso. */
 export const changePassword = async (current: string, next: string): Promise<string | null> => {
+  if (next.length < 8) return 'La nueva clave debe tener al menos 8 caracteres.';
+  if (next === current) return 'La nueva clave debe ser distinta de la actual.';
+
+  if (mode === 'server' || !canUseLocalFallback()) {
+    try {
+      const res = await fetch('/api/password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ current, next }),
+      });
+      if (isJson(res)) {
+        const data = (await res.json().catch(() => null)) as { error?: string } | null;
+        if (res.ok) return null;
+        return data?.error ?? 'No se pudo actualizar la clave.';
+      }
+    } catch {
+      return 'No se pudo conectar con el servidor.';
+    }
+    if (!canUseLocalFallback()) return 'No se pudo conectar con el servidor.';
+  }
+
   const stored = readCreds();
   const currentOk = stored
     ? (await hashPassword(current, stored.algo)).hash === stored.passHash
     : current === DEFAULT_ADMIN_PASSWORD;
 
   if (!currentOk) return 'La clave actual no es correcta.';
-  if (next.length < 8) return 'La nueva clave debe tener al menos 8 caracteres.';
-  if (next === current) return 'La nueva clave debe ser distinta de la actual.';
 
   const { hash, algo } = await hashPassword(next);
   localStorage.setItem(

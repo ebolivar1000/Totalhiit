@@ -80,24 +80,38 @@ Desarrollar la plataforma web y clone funcional para TOTALHIIT (+40) enfocada en
 - **Verificado headless**: 13/13 checks de auth/persistencia, sección `#vivo` con video real y banner
   `#E72F86 → #FF3287 → #FFB400`, panel admin renderizando tras login. `npm run build` en verde.
 
+## Tercera tanda (2026-10-22): publicación
+- **Logo**: el fueguito naranja de Navbar y Footer se reemplazó por `public/images/certificado.jpg`.
+- **GitHub**: repo sincronizado con `github.com/ebolivar1000/Totalhiit` (rama `main`), integrando el
+  commit inicial del remoto; `.gitignore` unificado y `tsconfig.tsbuildinfo` destrackeado.
+- **Backend serverless** en `functions/` (Cloudflare Pages):
+  - `GET/POST /api/content` con Workers KV (`SITE_CONTENT`) para publicar precios, videos e imágenes.
+  - Login con PBKDF2-SHA256, cookie HttpOnly firmada (HMAC), rate limit y `POST /api/password`.
+  - El panel ahora carga lo publicado y tiene el botón **Publicar en PROD** (deshabilitado sin backend).
+- **Pruebas**: `npm run test:api` → 17/17 (login, sesión, publicar, validaciones, cambio de clave,
+  rate limit, logout). `npm run admin:secrets` genera los secretos para Cloudflare.
+- **Documentación**: `docs/despliegue.md` con los pasos de Cloudflare Pages + KV + secretos.
+
 ## En desarrollo
-- Revisión visual del usuario en navegador: Hero magenta, lockup Edo, sección Clases en Vivo y panel
-  admin.
+- Revisión visual del usuario en navegador: Hero magenta, lockup Edo, sección Clases en Vivo, logo con
+  certificado y panel admin.
 - Unificación de paleta de marca (magenta `#E0006C` vs. `rose-600`).
 
 ## Pendiente
 - Completar `YOUTUBE_URL` en `src/data/contact.ts` y el alias de Mercado Pago en
   `src/components/PaymentModal.tsx`.
-- Decidir si el contenido editable migra a un backend (Supabase) para que los cambios se vean en todos
-  los dispositivos; hoy el admin solo afecta a su navegador.
+- Crear el proyecto en Cloudflare Pages (cuenta de la dueña): conectar el repo, KV `SITE_CONTENT` y
+  los tres secretos; ver `docs/despliegue.md`.
+- Fase 2: R2 para subir imágenes/videos desde el panel.
 - Agregar el archivo del recetario nutricional mencionado en los planes.
-- Configurar hosting / despliegue del sitio.
 
 ## Problemas conocidos
-- La auth del admin es client-side (nominal): no protege ante alguien con acceso al código.
-- Los cambios del panel no son visibles para los visitantes (localStorage, por navegador).
+- Sin desplegar todavía: el botón **Publicar en PROD** queda deshabilitado hasta crear el proyecto de
+  Cloudflare.
+- El contenido público tiene caché de borde de 60 s: un cambio puede tardar hasta ~1 minuto en verse.
+- La clave de desarrollo (`src/admin/auth.ts`) no se usa en producción, pero está en el repo; en
+  Cloudflare se configura una clave distinta.
 
 ## Próxima tarea
-Revisión visual en navegador del Hero magenta, la marca en Edo, la sección `#vivo` y el panel
-`/admin.html`; en paralelo completar los datos de contacto definitivos y evaluar backend para el
-contenido editable.
+Publicar en Cloudflare Pages siguiendo `docs/despliegue.md` y probar el flujo completo (login +
+Publicar en PROD desde otro navegador). En paralelo, completar los datos de contacto definitivos.

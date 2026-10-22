@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   AlertCircle,
   Check,
@@ -14,12 +14,15 @@ import {
   Save,
   ShieldCheck,
   Sparkles,
+  Upload,
   Video,
 } from 'lucide-react';
 import { BOOTCAMP_WEEKS, INTRO_VIDEO, STRETCHING_VIDEOS, VideoItem } from '../data/bootcampData';
 import { HERO_COLLAGE } from '../data/heroCollage';
 import {
+  fetchRemoteSiteContent,
   loadSiteContent,
+  publishSiteContent,
   resetSiteContent,
   saveSiteContent,
   SiteContent,
@@ -27,7 +30,10 @@ import {
 } from '../data/siteContent';
 import {
   changePassword,
+  checkSession,
   getAdminUser,
+  getAuthError,
+  getAuthMode,
   isLoggedIn,
   login,
   logout,
@@ -66,7 +72,7 @@ const LoginScreen: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => {
     if (ok) {
       onSuccess();
     } else {
-      setError('Usuario o clave incorrectos.');
+      setError(getAuthError() ?? 'Usuario o clave incorrectos.');
     }
   };
 
@@ -150,20 +156,51 @@ export const AdminApp: React.FC = () => {
   const [section, setSection] = useState<Section>('precios');
   const [draft, setDraft] = useState<SiteContent>(() => loadSiteContent());
   const [dirty, setDirty] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ text: string; type: 'ok' | 'error' } | null>(null);
+  const [publishing, setPublishing] = useState(false);
 
   const [currentPass, setCurrentPass] = useState('');
   const [nextPass, setNextPass] = useState('');
   const [confirmPass, setConfirmPass] = useState('');
   const [passMessage, setPassMessage] = useState<{ type: 'ok' | 'error'; text: string } | null>(null);
 
+  useEffect(() => {
+    let alive = true;
+    checkSession().then((ok) => {
+      if (alive && ok) setLogged(true);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const dirtyRef = useRef(false);
+  useEffect(() => {
+    dirtyRef.current = dirty;
+  }, [dirty]);
+
+  useEffect(() => {
+    let alive = true;
+    fetchRemoteSiteContent().then((remote) => {
+      if (alive && remote && !dirtyRef.current) {
+        setDraft(remote);
+        setDirty(false);
+      }
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
   if (!logged) {
     return <LoginScreen onSuccess={() => setLogged(true)} />;
   }
 
-  const showToast = (message: string) => {
-    setToast(message);
-    window.setTimeout(() => setToast(null), 3000);
+  const authMode = getAuthMode();
+
+  const showToast = (text: string, type: 'ok' | 'error' = 'ok') => {
+    setToast({ text, type });
+    window.setTimeout(() => setToast(null), 3500);
   };
 
   const setPrice = (key: keyof SitePrices, value: string) => {
@@ -196,7 +233,19 @@ export const AdminApp: React.FC = () => {
   const handleSave = () => {
     saveSiteContent(draft);
     setDirty(false);
-    showToast('Cambios guardados. Ya se ven en el sitio en este navegador.');
+    showToast('Borrador guardado en este navegador.');
+  };
+
+  const handlePublish = async () => {
+    setPublishing(true);
+    const result = await publishSiteContent(draft);
+    setPublishing(false);
+    if (result.ok) {
+      setDirty(false);
+      showToast('Publicado en PROD: ya es visible para todos los visitantes.');
+      return;
+    }
+    showToast(result.error ?? 'No se pudo publicar.', 'error');
   };
 
   const handleReset = () => {
@@ -475,8 +524,9 @@ export const AdminApp: React.FC = () => {
               <div className="mt-8 flex items-start gap-2 bg-stone-950/60 border border-stone-800 rounded-2xl p-4 text-[11px] leading-relaxed text-stone-500">
                 <Lock className="w-4 h-4 shrink-0 mt-0.5" />
                 <span>
-                  Este sitio es estático: el usuario y la clave se validan en el navegador. Sirve para
-                  separar el panel del sitio público, no como seguridad de servidor.
+                  {authMode === 'server'
+                    ? 'La clave se valida en el servidor (Cloudflare) y se guarda hasheada con PBKDF2. Cambiarla invalida el acceso con la clave anterior.'
+                    : 'Sin backend, el usuario y la clave se validan en el navegador. Al publicar en Cloudflare Pages la validación pasa al servidor.'}
                 </span>
               </div>
             </div>
@@ -487,7 +537,11 @@ export const AdminApp: React.FC = () => {
         {section !== 'seguridad' && (
           <div className="sticky bottom-4 mt-6 flex flex-col sm:flex-row items-center justify-between gap-3 bg-stone-900/95 backdrop-blur border border-stone-800 rounded-2xl px-4 py-3 shadow-2xl">
             <p className="text-[11px] text-stone-500 text-center sm:text-left">
-              {dirty ? 'Tenés cambios sin guardar.' : 'Se guarda en este navegador (localStorage).'}
+              {dirty
+                ? 'Tenés cambios sin guardar.'
+                : authMode === 'server'
+                  ? 'Contenido de producción (Cloudflare KV).'
+                  : 'Sin backend: los cambios quedan en este navegador.'}
             </p>
             <div className="flex items-center gap-2">
               <button
@@ -508,9 +562,23 @@ export const AdminApp: React.FC = () => {
               <button
                 onClick={handleSave}
                 disabled={!dirty}
-                className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-[#E0006C] hover:bg-[#C2005A] disabled:opacity-40 text-xs font-bold text-white transition-colors"
+                className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 disabled:opacity-40 text-xs font-semibold text-stone-200 transition-colors"
+                title="Guardar borrador en este navegador"
               >
                 <Save className="w-3.5 h-3.5" /> Guardar
+              </button>
+              <button
+                onClick={handlePublish}
+                disabled={publishing || authMode === 'local'}
+                title={
+                  authMode === 'local'
+                    ? 'Disponible cuando el sitio esté publicado en Cloudflare Pages'
+                    : 'Publicar para todos los visitantes'
+                }
+                className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-xs font-bold text-white transition-colors"
+              >
+                <Upload className="w-3.5 h-3.5" />
+                {publishing ? 'Publicando…' : 'Publicar en PROD'}
               </button>
             </div>
           </div>
@@ -518,14 +586,18 @@ export const AdminApp: React.FC = () => {
 
         <p className="mt-6 flex items-center justify-center gap-1.5 text-[10px] text-stone-600">
           <Video className="w-3 h-3" />
-          TOTALHIIT · panel local · sin backend
+          TOTALHIIT · panel · {authMode === 'server' ? 'producción (Cloudflare)' : 'local · sin backend'}
         </p>
       </main>
 
       {/* Toast */}
       {toast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-20 bg-emerald-600 text-white text-xs font-bold px-5 py-3 rounded-full shadow-lg animate-fade-in">
-          {toast}
+        <div
+          className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-20 ${
+            toast.type === 'ok' ? 'bg-emerald-600' : 'bg-red-600'
+          } text-white text-xs font-bold px-5 py-3 rounded-full shadow-lg animate-fade-in max-w-[90vw] text-center`}
+        >
+          {toast.text}
         </div>
       )}
     </div>

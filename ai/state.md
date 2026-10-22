@@ -101,6 +101,14 @@ cobro dual: **Wise (USD)** para el exterior y **Mercado Pago / transferencia ban
 - Verificado headless: 13/13 checks de auth y persistencia OK, sección `#vivo` con video pintando
   contenido real y banner con degradado `#E72F86 → #FF3287 → #FFB400`, y panel admin renderizando
   tras login programático.
+- **Publicación real (sin desplegar todavía)**: capa serverless en `functions/api/*` con
+  `GET/POST /api/content` (KV `SITE_CONTENT`), login con PBKDF2 + cookie HttpOnly firmada,
+  rate limit y cambio de clave. El panel tiene **Publicar en PROD** (deshabilitado sin backend) y
+  carga el contenido publicado al abrirse. `npm run test:api` valida 17 casos de la API (login,
+  sesión, publicar, validación, cambio de clave, rate limit, logout). Guía completa en
+  `docs/despliegue.md`.
+- **GitHub**: repo sincronizado con `github.com/ebolivar1000/Totalhiit` (rama `main`); el remoto tenía
+  un commit inicial que se integró. Falta crear el proyecto en Cloudflare (pasos de la dueña).
 
 ## Verificación visual (sin navegador de escritorio)
 - Se verificó el render con Chrome/Edge headless (`--screenshot`) + análisis de píxeles:
@@ -120,24 +128,30 @@ cobro dual: **Wise (USD)** para el exterior y **Mercado Pago / transferencia ban
 - Agregar el archivo del recetario nutricional mencionado en los planes (hoy no existe en el repo).
 - Unificar la paleta de marca: conviven el magenta `#E0006C` (Hero + PaymentModal) y el rose de
   Tailwind (`rose-600`) en Navbar, BootcampModules, Pricing y VideoModal.
-- Despliegue: no hay hosting configurado (el repo solo tiene `dist/` local).
-- **Admin solo local**: los cambios de precios/videos/imágenes viven en el `localStorage` del navegador
-  del admin; los visitantes no los ven. Para edición global hace falta backend (p. ej. Supabase). La
-  auth client-side es nominal (el hash es legible en el bundle).
-- Revisión visual de la sección Clases en Vivo (video, cards, banner) y del panel admin en navegador.
+- **Crear el proyecto en Cloudflare Pages** (lo hace la dueña de la cuenta): conectar el repo,
+  build `npm run build` + salida `dist`, KV `totalhiit-content` como `SITE_CONTENT`, y los secretos
+  `ADMIN_USER` / `ADMIN_PASSWORD_HASH` / `SESSION_SECRET` generados con `npm run admin:secrets`.
+  Detalle en `docs/despliegue.md`.
+- **Fase 2 (R2)**: bucket `totalhiit-media` + `functions/api/upload.ts` para que el admin suba
+  imágenes/videos desde el panel. Hoy los medios viajan en el repo.
+- Revisión visual de la sección Clases en Vivo (video, cards, banner), del logo con el certificado y
+  del panel admin en navegador.
 
 ## Próxima tarea
-Revisión visual en navegador (`npm run dev`) del Hero rojo magenta, del lockup en Edo, de la sección
-`#vivo` y del panel `/admin.html`; en paralelo completar `YOUTUBE_URL` y el alias de Mercado Pago.
-Decidir si el contenido editable pasa a un backend real (Supabase) para que los cambios se vean en
-todos los dispositivos.
+Crear el proyecto en Cloudflare Pages y cargar KV + secretos siguiendo `docs/despliegue.md`; luego
+probar en producción el login y **Publicar en PROD** en otro navegador. En paralelo: revisión visual
+(Hero, `#vivo`, logo con certificado, panel) y completar `YOUTUBE_URL` y el alias de Mercado Pago.
 
 ## Comandos utiles
 - `npm run dev` → dev server en `http://127.0.0.1:5173/` (LAN: `http://192.168.0.84:5173/`).
   Con `strictPort: true` falla si el puerto 5173 esta ocupado: leer la terminal, no buscar otro puerto.
-- Panel de administración: `http://127.0.0.1:5173/admin.html` (credenciales en `src/admin/auth.ts`).
+- Panel de administración: `http://127.0.0.1:5173/admin.html` (en dev, clave local de
+  `src/admin/auth.ts`; en producción, la cargada en Cloudflare).
 - `npm run build` → `tsc -b` + build de Vite (genera `dist/index.html` y `dist/admin.html`).
+- `npm run test:api` → 17 pruebas de las Functions (login, KV, rate limit) sin desplegar.
+- `npm run admin:secrets -- "Clave"` → genera `ADMIN_PASSWORD_HASH` y `SESSION_SECRET` para Cloudflare.
 - Verificar render sin abrir navegador: `msedge --headless=new --screenshot=... <url>`.
+- `git push origin main` → despliegue automático en Cloudflare Pages.
 
 ## Archivos relevantes
 - `src/App.tsx` — orquestación de estado: `currency`, `activeVideo`, `payment` (PaymentSelection).
@@ -153,8 +167,12 @@ todos los dispositivos.
 - `src/data/bootcampData.ts` — datos de videos, YouTube IDs e imágenes.
 - `src/components/LiveClasses.tsx` — sección `#vivo` (paquetes en vivo, banner clase gratis, video).
 - `src/data/siteContent.ts` + `src/hooks/useSiteContent.ts` — contenido editable (precios, videos,
-  imágenes) con persistencia en `localStorage`.
-- `src/admin/auth.ts` — login, hash y cambio de contraseña (**credenciales iniciales solo aquí**).
+  imágenes) con caché en `localStorage` y publicación vía `/api/content`.
+- `src/admin/auth.ts` — login del panel (API primero; respaldo local solo en dev).
+- `functions/_lib/auth.ts` — HMAC de sesión, PBKDF2, cookies y rate limit.
+- `functions/api/{content,login,logout,session,password}.ts` — API del panel y del contenido.
+- `scripts/api-test.ts` + `scripts/admin-secrets.mjs` — pruebas de la API y generación de secretos.
+- `docs/despliegue.md` — guía paso a paso de Cloudflare Pages (KV, secretos, verificación).
 - `src/admin/AdminApp.tsx`, `src/admin/main.tsx`, `admin.html` — panel de administración.
 - `src/index.css` — tipografías, `@font-face` de Edo + `.font-edo`, `font-serif-display` y keyframes
   propios (`animate-fade-in`).

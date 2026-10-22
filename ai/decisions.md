@@ -154,3 +154,44 @@ Registrar aquí las decisiones que no deben perderse al cambiar de IA.
   OneDrive lo bloquea y el dev server moría con `EBUSY`.
 - Archivos afectados: `src/components/LiveClasses.tsx`, `src/App.tsx`, `src/components/Navbar.tsx`,
   `vite.config.ts`, `public/videos/entrenamiento.mp4`.
+
+## Decisión 16 — GitHub como repositorio único del proyecto
+- Fecha: 2026-10-22
+- Decisión: El repo local se sincroniza con **`github.com/ebolivar1000/Totalhiit`** (rama `main`).
+  El remoto ya tenía un commit inicial con `.gitignore` + `README.md`: se integró con
+  `git merge --allow-unrelated-histories` (se conservó el `.gitignore` estándar de Node y se le
+  agregaron `dist-ssr`, `*.local`, `*.tsbuildinfo` y reglas de editor). `tsconfig.tsbuildinfo` dejó
+  de trackearse.
+- Motivo: Pedido de la dueña ("que todo quede guardado allí") y necesidad de CI/CD: Cloudflare Pages
+  construye desde GitHub en cada push a `main`.
+- Archivos afectados: `.gitignore`, `README.md` (del remoto), todo el repo.
+
+## Decisión 17 — Cloudflare Pages + KV + botón "Publicar en PROD"
+- Fecha: 2026-10-22
+- Decisión: Hosting gratuito en **Cloudflare Pages** (ancho de banda ilimitado, uso comercial
+  permitido, soporta repo privado) con **Pages Functions** y **Workers KV**:
+  - `GET /api/content` lee el JSON publicado de KV (`SITE_CONTENT`), con caché de borde de 60 s.
+  - `POST /api/content` valida y guarda el contenido (requiere sesión).
+  - El panel muestra **Publicar en PROD** y deshabilita el botón cuando no hay backend.
+  - `localStorage` queda como caché/borrador y como respaldo en desarrollo.
+- Motivo: Permite que la dueña cambie precios, videos e imágenes sin recompilar y que el cambio se
+  vea en todos los dispositivos. Se descartaron GitHub Pages (sin backend, exige repo público) y
+  Vercel Hobby (prohíbe uso comercial). R2 (10 GB gratis, egress $0) queda para la Fase 2, cuando
+  haga falta subir archivos desde el panel.
+- Archivos afectados: `functions/api/content.ts`, `src/data/siteContent.ts`,
+  `src/hooks/useSiteContent.ts`, `src/admin/AdminApp.tsx`, `docs/despliegue.md`.
+
+## Decisión 18 — Login del admin validado en el servidor
+- Fecha: 2026-10-22
+- Decisión: `POST /api/login` verifica un hash **PBKDF2-SHA256** (120.000 iteraciones) guardado en
+  KV (`auth`) o, si todavía no se cambió la clave, en los secretos `ADMIN_USER` /
+  `ADMIN_PASSWORD_HASH`. La sesión es una cookie `th_session` **HttpOnly + Secure +
+  SameSite=Strict**, firmada con HMAC-SHA256 usando `SESSION_SECRET`. Hay rate limit de 20 fallos
+  cada 10 minutos por IP en KV. `POST /api/password` cambia la clave (KV) y `POST /api/logout` borra
+  la cookie.
+- Motivo: La validación anterior era client-side (nominal). Con el botón de publicar, la sesión
+  protege escrituras reales. El respaldo local (`src/admin/auth.ts`) queda **solo** para dev en
+  `localhost`; en producción, si la API falla, el panel no permite entrar (no hay fallback
+  inseguro).
+- Archivos afectados: `functions/_lib/auth.ts`, `functions/api/{login,logout,session,password}.ts`,
+  `src/admin/auth.ts`, `scripts/admin-secrets.mjs`, `scripts/api-test.ts`.

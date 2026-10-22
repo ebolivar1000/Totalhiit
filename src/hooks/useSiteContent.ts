@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
+  fetchRemoteSiteContent,
   loadSiteContent,
   SITE_CONTENT_EVENT,
   SITE_CONTENT_KEY,
@@ -7,13 +8,20 @@ import {
 } from '../data/siteContent';
 
 /**
- * Lee el contenido editable y se re-renderiza cuando el admin guarda cambios
- * (mismo navegador: evento propio; otras pestañas: evento `storage`).
+ * Lee el contenido editable. Pinta primero la caché local (instantáneo) y luego
+ * aplica lo publicado en producción (`/api/content`). Se re-renderiza cuando el
+ * admin guarda en este navegador (evento propio) o en otra pestaña (`storage`).
  */
 export const useSiteContent = (): SiteContent => {
   const [content, setContent] = useState<SiteContent>(() => loadSiteContent());
 
   useEffect(() => {
+    let alive = true;
+
+    fetchRemoteSiteContent().then((remote) => {
+      if (alive && remote) setContent(remote);
+    });
+
     const refresh = () => setContent(loadSiteContent());
     const onStorage = (event: StorageEvent) => {
       if (event.key === SITE_CONTENT_KEY || event.key === null) refresh();
@@ -22,6 +30,7 @@ export const useSiteContent = (): SiteContent => {
     window.addEventListener(SITE_CONTENT_EVENT, refresh);
     window.addEventListener('storage', onStorage);
     return () => {
+      alive = false;
       window.removeEventListener(SITE_CONTENT_EVENT, refresh);
       window.removeEventListener('storage', onStorage);
     };

@@ -1,0 +1,10 @@
+{
+  "compaction": {
+    "auto": true,
+    "prune": true
+  },
+  "permission": {
+    "edit": "ask",
+    "bash": "ask"
+  }
+}

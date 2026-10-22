@@ -151,6 +151,8 @@ vite.config.ts.timestamp-*
 # Proyecto TOTALHIIT
 dist-ssr
 *.local
+.wrangler/
+.dev.vars
 .vscode/*
 !.vscode/extensions.json
 .idea

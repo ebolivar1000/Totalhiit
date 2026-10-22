@@ -4,11 +4,12 @@
 - Responde en español.
 - Usa TypeScript cuando corresponda (Stack: React + Vite + Tailwind CSS + TypeScript).
 - Lee docs/progreso.md antes de empezar una tarea.
+- Lee ai/state.md para el estado actual del proyecto y ai/decisions.md para decisiones técnicas.
 - Lee docs/arquitectura.md solo si es necesario.
 - No revises todo el repositorio sin necesidad.
 - Modifica únicamente los archivos relacionados con la tarea.
 - Antes de instalar dependencias, solicita autorización.
 - Evita respuestas extensas y código duplicado.
 - Ejecuta solo pruebas relacionadas con los cambios.
-- Actualiza docs/progreso.md al terminar tareas importantes.
-- Nunca incluyas contraseñas ni secretos en archivos de contexto.
+- Actualiza docs/progreso.md, ai/state.md y ai/decisions.md al terminar tareas importantes.
+- Nunca incluyas contraseñas ni secretos en archivos de contexto (datos bancarios van solo en el código).

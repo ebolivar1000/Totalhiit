@@ -1,5 +1,6 @@
 import React from 'react';
-import { Flame, Heart } from 'lucide-react';
+import { Heart } from 'lucide-react';
+import { INSTAGRAM_URL, YOUTUBE_URL } from '../data/contact';
 
 export const Footer: React.FC = () => {
   return (
@@ -11,19 +12,28 @@ export const Footer: React.FC = () => {
           {/* Brand Col */}
           <div className="md:col-span-2">
             <div className="flex items-center gap-2 mb-4">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-rose-500 to-amber-500 flex items-center justify-center text-white shadow-md">
-                <Flame className="w-5 h-5 fill-white" />
+              <div className="w-10 h-10 rounded-xl overflow-hidden bg-white ring-1 ring-stone-700 shadow-md">
+                <img
+                  src="/images/certificado.jpg"
+                  alt="Certificación TOTALHIIT"
+                  className="w-full h-full object-cover"
+                />
               </div>
-              <span className="font-extrabold text-2xl tracking-tight text-white">
-                TOTAL<span className="text-rose-500">HIIT</span>
-              </span>
+              <div className="flex flex-col">
+                <span className="font-edo text-[26px] leading-[1.1] text-white">
+                  TOTAL<span className="text-rose-500">HIIT</span>
+                </span>
+                <span className="font-edo text-[12px] leading-[1.3] text-stone-500">
+                  Bootcamp +40
+                </span>
+              </div>
             </div>
             <p className="text-sm text-stone-400 max-w-sm leading-relaxed mb-6">
               Plataforma y Bootcamp de entrenamiento HIIT de impacto adaptado y nutrición para mujeres de más de 40 años que desean recuperar su fuerza, agilidad y vitalidad.
             </p>
             <div className="flex items-center gap-4 text-stone-400">
               <a
-                href="https://www.instagram.com/totalhiit1"
+                href={INSTAGRAM_URL}
                 target="_blank"
                 rel="noreferrer"
                 className="w-10 h-10 rounded-full bg-stone-800 flex items-center justify-center text-stone-300 hover:text-white hover:bg-rose-600 transition-colors"
@@ -34,7 +44,7 @@ export const Footer: React.FC = () => {
                 </svg>
               </a>
               <a
-                href="https://www.youtube.com"
+                href={YOUTUBE_URL}
                 target="_blank"
                 rel="noreferrer"
                 className="w-10 h-10 rounded-full bg-stone-800 flex items-center justify-center text-stone-300 hover:text-white hover:bg-rose-600 transition-colors"

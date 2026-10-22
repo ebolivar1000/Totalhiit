@@ -4,7 +4,8 @@ export interface VideoItem {
   duration: string;
   description: string;
   youtubeId: string;
-  thumbnail?: string;
+  image: string;
+  isLocked: boolean;
   type: 'intro' | 'class' | 'stretching';
 }
 
@@ -16,12 +17,16 @@ export interface WeekModule {
   classes: VideoItem[];
 }
 
+export const HERO_BANNER_IMAGE = '/images/img_18_2084x1468.jpg';
+
 export const INTRO_VIDEO: VideoItem = {
   id: 'intro-1',
   title: 'Video de Introducción: Bienvenida a TOTAL+40',
   duration: '10 min',
   description: 'Conoce cómo está estructurado el bootcamp, recomendaciones previas y cómo cuidar tus articulaciones mientras ganas fuerza.',
   youtubeId: 'Fnk5WgIfZog',
+  image: '/images/img_32_1152x648.jpg',
+  isLocked: false, // Este sí se puede ver como muestra gratuita
   type: 'intro'
 };
 
@@ -38,6 +43,8 @@ export const BOOTCAMP_WEEKS: WeekModule[] = [
         duration: '25 min',
         description: 'Movilidad articular y circuitos de activación muscular suave.',
         youtubeId: 'wVlBMg6QKqE',
+        image: '/images/img_27_1152x648.jpg',
+        isLocked: true,
         type: 'class'
       },
       {
@@ -46,6 +53,8 @@ export const BOOTCAMP_WEEKS: WeekModule[] = [
         duration: '28 min',
         description: 'Fortalecimiento de suelo pélvico, abdomen y espalda baja.',
         youtubeId: 'f2QcIBb-hR4',
+        image: '/images/img_22_1152x648.jpg',
+        isLocked: true,
         type: 'class'
       },
       {
@@ -54,6 +63,8 @@ export const BOOTCAMP_WEEKS: WeekModule[] = [
         duration: '25 min',
         description: 'Quema de calorías y estimulación aeróbica sin saltos.',
         youtubeId: 'yClvb1a2BmQ',
+        image: '/images/img_21_1280x720.jpg',
+        isLocked: true,
         type: 'class'
       }
     ]
@@ -70,6 +81,8 @@ export const BOOTCAMP_WEEKS: WeekModule[] = [
         duration: '30 min',
         description: 'Fuerza funcional para rodillas, caderas y glúteos firmes.',
         youtubeId: 'W-gHxh9cc9A',
+        image: '/images/img_28_1024x576.jpg',
+        isLocked: true,
         type: 'class'
       },
       {
@@ -78,6 +91,8 @@ export const BOOTCAMP_WEEKS: WeekModule[] = [
         duration: '26 min',
         description: 'Brazos, hombros y espalda para mejorar postura y tonicidad.',
         youtubeId: 'pZVpFu94J6M',
+        image: '/images/img_24_1152x648.jpg',
+        isLocked: true,
         type: 'class'
       },
       {
@@ -86,6 +101,8 @@ export const BOOTCAMP_WEEKS: WeekModule[] = [
         duration: '28 min',
         description: 'Intervalos diseñados para activar el metabolismo sin agotar tus articulaciones.',
         youtubeId: 'tdoob2mOpaw',
+        image: '/images/img_23_1280x720.jpg',
+        isLocked: true,
         type: 'class'
       }
     ]
@@ -102,6 +119,8 @@ export const BOOTCAMP_WEEKS: WeekModule[] = [
         duration: '30 min',
         description: 'Combinación dinámica de fuerza y coordinación para mujeres activas.',
         youtubeId: 'ARs5oAGVW8c',
+        image: '/images/img_29_1024x576.jpg',
+        isLocked: true,
         type: 'class'
       },
       {
@@ -110,6 +129,8 @@ export const BOOTCAMP_WEEKS: WeekModule[] = [
         duration: '32 min',
         description: 'Clase completa de escultura corporal y resistencia muscular.',
         youtubeId: 'BXN4CRqOfdM',
+        image: '/images/img_26_1280x720.jpg',
+        isLocked: true,
         type: 'class'
       },
       {
@@ -118,6 +139,8 @@ export const BOOTCAMP_WEEKS: WeekModule[] = [
         duration: '27 min',
         description: 'Control corporal, equilibrio y fuerza en la zona media.',
         youtubeId: 'clWk36HDB50',
+        image: '/images/img_25_1280x720.jpg',
+        isLocked: true,
         type: 'class'
       }
     ]
@@ -134,6 +157,8 @@ export const BOOTCAMP_WEEKS: WeekModule[] = [
         duration: '32 min',
         description: 'Rutina completa de cuerpo entero para sellar tu energía.',
         youtubeId: 'OnuA4Y7DKaQ',
+        image: '/images/img_35_1024x576.jpg',
+        isLocked: true,
         type: 'class'
       },
       {
@@ -142,6 +167,8 @@ export const BOOTCAMP_WEEKS: WeekModule[] = [
         duration: '30 min',
         description: 'Último circuito de sobrecarga progresiva y resistencia.',
         youtubeId: 'YPNEUd873wQ',
+        image: '/images/img_34_1152x648.jpg',
+        isLocked: true,
         type: 'class'
       },
       {
@@ -150,6 +177,8 @@ export const BOOTCAMP_WEEKS: WeekModule[] = [
         duration: '35 min',
         description: 'La sesión culminante que marca el inicio de tu nuevo estilo de vida.',
         youtubeId: 'rsmPFHrQIpg',
+        image: '/images/img_33_1280x720.jpg',
+        isLocked: true,
         type: 'class'
       }
     ]
@@ -163,6 +192,8 @@ export const STRETCHING_VIDEOS: VideoItem[] = [
     duration: '18 min',
     description: 'Alivio de tensiones en espalda, cadera y cuello. Ideal para días de descanso o post-entreno.',
     youtubeId: 'Ga89sFd3CRo',
+    image: '/images/img_31_1152x648.jpg',
+    isLocked: true,
     type: 'stretching'
   },
   {
@@ -171,6 +202,8 @@ export const STRETCHING_VIDEOS: VideoItem[] = [
     duration: '15 min',
     description: 'Mejora el rango de movimiento, cuida tus ligamentos y reduce el estrés acumulado.',
     youtubeId: 'Ag41JO-rJj4',
+    image: '/images/img_30_1152x648.jpg',
+    isLocked: true,
     type: 'stretching'
   }
 ];

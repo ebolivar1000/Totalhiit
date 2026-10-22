@@ -4,20 +4,37 @@ import { Hero } from './components/Hero';
 import { BootcampModules } from './components/BootcampModules';
 import { NutritionPillars } from './components/NutritionPillars';
 import { Pricing } from './components/Pricing';
+import { LiveClasses } from './components/LiveClasses';
 import { FAQ } from './components/FAQ';
 import { Footer } from './components/Footer';
 import { VideoModal } from './components/VideoModal';
+import { PaymentModal } from './components/PaymentModal';
 import { VideoItem } from './data/bootcampData';
+import { useSiteContent } from './hooks/useSiteContent';
+
+type PaymentSelection = {
+  method: 'wise' | 'mercadopago';
+  planName: string;
+  amount: string;
+};
 
 export const App: React.FC = () => {
   const [currency, setCurrency] = useState<'USD' | 'ARS'>('USD');
   const [activeVideo, setActiveVideo] = useState<VideoItem | null>(null);
+  const [payment, setPayment] = useState<PaymentSelection | null>(null);
+  const { videos } = useSiteContent();
 
   const handleOpenPricing = () => {
     const el = document.getElementById('precios');
     if (el) {
       el.scrollIntoView({ behavior: 'smooth' });
     }
+  };
+
+  // Aplica el ID de YouTube configurado en el panel de administración (si existe)
+  const handleOpenVideo = (video: VideoItem) => {
+    const override = videos[video.id];
+    setActiveVideo(override ? { ...video, youtubeId: override } : video);
   };
 
   return (
@@ -37,12 +54,13 @@ export const App: React.FC = () => {
       {/* Main Content */}
       <main className="flex-1">
         <Hero
-          onPlayVideo={(v) => setActiveVideo(v)}
+          onPlayVideo={handleOpenVideo}
           onOpenPricing={handleOpenPricing}
         />
 
         <BootcampModules
-          onPlayVideo={(v) => setActiveVideo(v)}
+          onSelectVideo={handleOpenVideo}
+          onOpenPricing={handleOpenPricing}
         />
 
         <NutritionPillars />
@@ -50,7 +68,10 @@ export const App: React.FC = () => {
         <Pricing
           currency={currency}
           setCurrency={setCurrency}
+          onSelectPayment={(method, planName, amount) => setPayment({ method, planName, amount })}
         />
+
+        <LiveClasses />
 
         <FAQ />
       </main>
@@ -62,6 +83,15 @@ export const App: React.FC = () => {
       <VideoModal
         video={activeVideo}
         onClose={() => setActiveVideo(null)}
+        onOpenPricing={handleOpenPricing}
+      />
+
+      {/* Payment Instructions Modal */}
+      <PaymentModal
+        method={payment?.method ?? null}
+        planName={payment?.planName ?? ''}
+        amount={payment?.amount ?? ''}
+        onClose={() => setPayment(null)}
       />
     </div>
   );

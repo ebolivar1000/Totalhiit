@@ -24,7 +24,7 @@ export const FAQ: React.FC = () => {
     },
     {
       q: '¿Cómo funcionan los pagos con Wise y Mercado Pago?',
-      a: 'Si vives fuera de Argentina, seleccionas la opción USD y podrás pagar de forma segura mediante Wise (admite tarjetas internacionales, débito y transferencias directas). Si vives en Argentina, seleccionas ARS y pagas en pesos a través de Mercado Pago con cualquier tarjeta o saldo en cuenta.'
+      a: 'Elige tu región y transfiere por el medio que te aparece en pantalla: si vives fuera de Argentina, seleccionas USD y te mostramos los datos de la cuenta Wise para transferir en dólares; si vives en Argentina, seleccionas ARS y te mostramos el CBU para transferir por Mercado Pago o tu banco. En ambos casos guardas el comprobante y lo envías por WhatsApp para activar tu acceso.'
     },
     {
       q: '¿Los videos caducan o tengo horarios fijos?',

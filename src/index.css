@@ -1,5 +1,15 @@
 @import "tailwindcss";
 
+/* Edo SZ (Vic Fieger) - brush script de la marca, uso comercial libre.
+   Archivo autoalojado en /public/fonts/edo.woff */
+@font-face {
+  font-family: 'Edo';
+  src: url('/fonts/edo.woff') format('woff');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 @layer base {
   body {
     font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
@@ -8,9 +18,31 @@
   .font-serif-display {
     font-family: 'Playfair Display', Georgia, serif;
   }
+
+  .font-edo {
+    font-family: 'Edo', 'Playfair Display', Georgia, serif;
+  }
 }
 
 /* Smooth scrolling */
 html {
   scroll-behavior: smooth;
+}
+
+/* Animaciones propias (Tailwind v4 no trae `animate-fade-in`) */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@layer utilities {
+  .animate-fade-in {
+    animation: fade-in 0.25s ease-out both;
+  }
 }

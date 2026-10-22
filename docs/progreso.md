@@ -1,25 +1,103 @@
 # Estado actual - TOTALHIIT
 
 ## Objetivo
-Desarrollar la plataforma web de TOTALHIIT para mujeres +40 hispanohablantes (entrenamiento HIIT + nutrición) con soporte de pagos duales (Wise USD y Mercado Pago ARS).
+Desarrollar la plataforma web y clone funcional para TOTALHIIT (+40) enfocada en mujeres de más de 40 años hispanohablantes a nivel internacional (HIIT adaptado + Nutrición funcional) con pagos duales (Wise en USD y Mercado Pago en ARS).
 
 ## Completado
-- Memoria del proyecto registrada globalmente en `AGENTS.md` (local y en `$HOME`).
-- Análisis completo de `BOOTCAMP TOTAL+40.pdf`: 15 videos extraídos e identificados (Introducción, 4 semanas de clases y videos complementarios de estiramiento).
-- Stack tecnológico aprobado: React + Vite + Tailwind CSS + TypeScript.
-- Arquitectura documentada en `docs/arquitectura.md`.
+- **Memoria persistente**: Registrada en `C:\Users\Everth\AGENTS.md` y [AGENTS.md](file:///C:/Users/Everth/ProyectosIA/MiPrimeraApp/AGENTS.md) para que Antigravity CLI reconozca **TOTALHIIT** en cada inicio de sesión.
+- **Análisis de PDF `BOOTCAMP TOTAL+40.pdf`**: Se extrajeron los 15 videos oficiales de YouTube correspondientes al Video de Introducción, las 4 semanas de clases (12 clases) y las 2 clases de estiramiento y movilidad.
+- **Arquitectura base aprobada**: Configurada en [docs/arquitectura.md](file:///C:/Users/Everth/ProyectosIA/MiPrimeraApp/docs/arquitectura.md).
+- **Inicialización de la aplicación Web**:
+  - React 19 + TypeScript + Vite + Tailwind CSS v4 + Lucide React.
+  - Reproductor modal de video interactivo con YouTube embeds sin salir de la página.
+  - Barra de navegación con selector de divisa (`USD` vía Wise / `ARS` vía Mercado Pago).
+  - Hero section con video teaser de introducción y propuesta de valor enfocada en mujeres +40.
+  - Módulos interactivos de las 4 semanas del Bootcamp con miniaturas, duración y descripción de cada clase.
+  - Módulo complementario de estiramiento y movilidad articular.
+  - Sección de pilares nutricionales adaptados a cambios hormonales y antiinflamación.
+  - Sección de precios y checkout dual (Wise / Mercado Pago).
+  - Acordeón de preguntas frecuentes (FAQ) para dudas de articulaciones, materiales y acceso.
+  - Footer con enlaces a Instagram (@totalhiit1) y YouTube.
+- **Imágenes y creatividades**:
+  - 16 miniaturas de los videos extraídas del PDF en `public/images/`.
+  - 8 creatividades del usuario en `public/images/user/` (`totalhiit_1..8.jpg`).
+  - `totalhiit_3.jpg` es un duplicado exacto de `totalhiit_1.jpg` y queda excluido del collage.
+- **Encabezado (Hero) con collage de creatividades**:
+  - Mosaico translúcido de fondo (retícula 2x4 móvil / 4x2 desktop) con las 7 creatividades únicas
+    + 1 celda de marca con el logo.
+  - Celdas con `object-cover`, `scale-110`, `blur-[5px]` y `object-position` variable; velos
+    oscuros para legibilidad y glow magenta de marca.
+  - Se replica el concepto de `befitbycata.com` (fondo full-bleed con texto encima), adaptado a
+    material vertical de Instagram. No se agrega una sección nueva.
+- **Hero en rojo magenta** (pedido de la dueña):
+  - Fondo `#B00050` con velos magenta y degradado a `#8A0038` al pie; el collage sigue siendo la
+    textura de fondo.
+  - Contraste reajustado: titular en blanco, acento del H1 en `#FFD3E6`, CTA principal **blanco con
+    texto magenta** (antes `#E0006C`, invisible sobre magenta), badge y bordes en blanco translúcido.
+- **Tipografía de marca Edo**:
+  - "TOTALHIIT / Bootcamp +40" en **Edo (Edo SZ)**, brush script de Vic Fieger con uso comercial
+    libre. No está en Google Fonts ni en Fontsource, así que el WOFF (17 KB) quedó autoalojado en
+    `public/fonts/edo.woff`, declarado con `@font-face` + `.font-edo` en `src/index.css`.
+  - Aplicada en el lockup del Navbar y del Footer. Procedencia y licencia en `public/fonts/README.txt`.
+- **WhatsApp con dos mensajes separados**:
+  - Wise (USD) y Mercado Pago (ARS) tienen su propia plantilla completa (plan, importe, medio de pago
+    y envío del comprobante), en lugar de un único mensaje con condicional.
+- **Checkout dual funcional** (`PaymentModal`):
+  - Modal de instrucciones de pago con datos bancarios por método, botón de copiar al portapapeles
+    (CBU, beneficiario, routing y cuenta) y enlace de confirmación por WhatsApp.
+  - Conectado al flujo real: `Pricing` -> `onSelectPayment` -> `App` -> `PaymentModal`.
+- **Reparaciones**:
+  - `animate-fade-in` (usada en ambos modales) no existía en Tailwind v4 → agregada en `src/index.css`.
+  - Ancla `#programa` del Navbar sin destino → ahora es el `id` del Hero.
+  - Enlace de WhatsApp sin destinatario y enlace de YouTube genérico → centralizados en
+    `src/data/contact.ts` (WhatsApp: **+54 9 11 5418-8296**).
+  - FAQ de pagos reescrito para describir la transferencia real (no pago con tarjeta).
+  - **La web no se veía en el navegador**: Vite escuchaba solo en IPv6 (`::1`), por lo que
+    `127.0.0.1:5173` no conectaba; además podía saltear al puerto 5174 en silencio.
+    `vite.config.ts` ahora fija `host: '0.0.0.0'`, `port: 5173` y `strictPort: true`.
+- **Render verificado** con navegador headless + análisis de píxeles: Hero con fondo oscuro,
+  titular en blanco, collage visible como textura y las 7 creatividades cargando (HTTP 200).
+- **Compilación verificada**: `npm run build` ejecutado exitosamente sin errores de TypeScript.
+- **Control de versiones**: Repositorio Git inicializado y primer commit registrado.
+
+## Segunda tanda (2026-10-22)
+- **Hero rojo magenta**: base `#B00050`, velos magenta y degradado a `#8A0038`; H1 blanco con acento
+  `#FFD3E6` y CTA blanco con texto magenta. Verificado por píxeles (`#B10050`).
+- **Marca en Edo**: WOFF autoalojado (`public/fonts/edo.woff`, Edo SZ de Vic Fieger) con `@font-face` +
+  `.font-edo`; aplicado al lockup del Navbar y del Footer.
+- **Sección "Clases en Vivo"** (`#vivo`, entre Precios y FAQ): modalidad de 8/12/16 clases por mes por
+  Zoom, seguimiento personalizado, comunidad, nutrición y acompañamiento privado; CTA a WhatsApp;
+  banner de clase gratis de prueba; video en bucle `public/videos/entrenamiento.mp4` (1920x1080, 25 s).
+  Links en el menú de escritorio y móvil.
+- **Panel de administración** en `/admin.html`: login con clave cambiable, edición de precios, IDs de
+  video e imágenes de fondo. Persistencia en `localStorage` (`src/data/siteContent.ts` +
+  `useSiteContent`), consumida por Hero, Pricing y `handleOpenVideo`. El sitio compila en dos entradas
+  (`index.html` + `admin.html`).
+- **Fix del dev server**: el MP4 de OneDrive bloqueaba el watcher y tumbaba Vite con `EBUSY`;
+  `server.watch.ignored: ['**/public/videos/**']`.
+- **Logo con certificado**: el fueguito naranja de Navbar y Footer se sustituyó por
+  `public/images/certificado.jpg` (optimizado a 1400x781, 156 KB).
+- **Verificado headless**: 13/13 checks de auth/persistencia, sección `#vivo` con video real y banner
+  `#E72F86 → #FF3287 → #FFB400`, panel admin renderizando tras login. `npm run build` en verde.
 
 ## En desarrollo
-- Inicialización de la aplicación React + Vite + Tailwind CSS + TypeScript dentro de `C:\Users\Everth\ProyectosIA\MiPrimeraApp`.
-- Maquetación de la Landing Page / Plataforma web con el clon de la estructura de `befitbycata.com` adaptada a TOTALHIIT +40.
+- Revisión visual del usuario en navegador: Hero magenta, lockup Edo, sección Clases en Vivo y panel
+  admin.
+- Unificación de paleta de marca (magenta `#E0006C` vs. `rose-600`).
 
 ## Pendiente
-- Diseñar componentes: Navbar con selector de moneda, Hero, Módulos del Bootcamp (Videos), Sección de Nutrición, Precios y Checkout dual (Wise / MP).
-- Integrar assets e imágenes de Instagram y YouTube.
-- Configuración de pasarelas de pago (Wise / Mercado Pago).
+- Completar `YOUTUBE_URL` en `src/data/contact.ts` y el alias de Mercado Pago en
+  `src/components/PaymentModal.tsx`.
+- Decidir si el contenido editable migra a un backend (Supabase) para que los cambios se vean en todos
+  los dispositivos; hoy el admin solo afecta a su navegador.
+- Agregar el archivo del recetario nutricional mencionado en los planes.
+- Configurar hosting / despliegue del sitio.
 
 ## Problemas conocidos
-Ninguno.
+- La auth del admin es client-side (nominal): no protege ante alguien con acceso al código.
+- Los cambios del panel no son visibles para los visitantes (localStorage, por navegador).
 
 ## Próxima tarea
-Inicializar el proyecto Vite con React, Tailwind CSS y TypeScript.
+Revisión visual en navegador del Hero magenta, la marca en Edo, la sección `#vivo` y el panel
+`/admin.html`; en paralelo completar los datos de contacto definitivos y evaluar backend para el
+contenido editable.

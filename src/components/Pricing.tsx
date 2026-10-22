@@ -1,27 +1,26 @@
 import React from 'react';
-import { Check, ShieldCheck, Zap, Globe, CreditCard, Sparkles, ExternalLink } from 'lucide-react';
+import { Check, ShieldCheck, Zap, Globe, CreditCard, Sparkles, ArrowRight } from 'lucide-react';
+import { useSiteContent } from '../hooks/useSiteContent';
 
 interface PricingProps {
   currency: 'USD' | 'ARS';
   setCurrency: (c: 'USD' | 'ARS') => void;
+  onSelectPayment: (method: 'wise' | 'mercadopago', planName: string, amount: string) => void;
 }
 
-export const Pricing: React.FC<PricingProps> = ({ currency, setCurrency }) => {
+export const Pricing: React.FC<PricingProps> = ({ currency, setCurrency, onSelectPayment }) => {
   const isUSD = currency === 'USD';
+  const { prices: editablePrices } = useSiteContent();
 
-  // Pricing config
+  // Precios editables desde /admin.html
   const prices = {
-    bootcamp: isUSD ? '$39' : '$49.999',
-    annual: isUSD ? '$129' : '$159.999',
+    bootcamp: isUSD ? editablePrices.bootcampUSD : editablePrices.bootcampARS,
+    annual: isUSD ? editablePrices.annualUSD : editablePrices.annualARS,
     unit: isUSD ? 'USD' : 'ARS'
   };
 
-  const handleCheckout = (planName: string) => {
-    if (isUSD) {
-      alert(`Redirigiendo a pasarela de pago internacional WISE (USD) para: ${planName}.\n\n(Enlace de checkout de Wise listo para enlazar tu cuenta business).`);
-    } else {
-      alert(`Redirigiendo a pasarela de pago MERCADO PAGO (Argentina - ARS) para: ${planName}.\n\n(Checkout de Mercado Pago listo para enlazar tu clave de suscripción).`);
-    }
+  const handleChoose = (planName: string, amount: string) => {
+    onSelectPayment(isUSD ? 'wise' : 'mercadopago', planName, amount);
   };
 
   return (
@@ -30,9 +29,9 @@ export const Pricing: React.FC<PricingProps> = ({ currency, setCurrency }) => {
         
         {/* Header */}
         <div className="max-w-3xl mx-auto mb-12">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-100 text-rose-700 text-xs font-bold uppercase tracking-wider mb-4">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#FFF0F6] text-[#E0006C] text-xs font-bold uppercase tracking-wider mb-4 border border-[#FCE7F1]">
             <Zap className="w-3.5 h-3.5" />
-            Inversión en tu Salud
+            Inversión en tu Salud y Vitalidad
           </div>
           <h2 className="font-serif-display text-3xl sm:text-4xl lg:text-5xl font-bold text-stone-900 tracking-tight mb-4">
             Elige el plan que mejor se adapte a ti
@@ -51,7 +50,7 @@ export const Pricing: React.FC<PricingProps> = ({ currency, setCurrency }) => {
                   : 'text-stone-500 hover:text-stone-900'
               }`}
             >
-              <Globe className="w-4 h-4 text-blue-500" />
+              <Globe className="w-4 h-4 text-emerald-500" />
               Internacional (USD vía Wise)
             </button>
             <button
@@ -95,46 +94,46 @@ export const Pricing: React.FC<PricingProps> = ({ currency, setCurrency }) => {
 
               <ul className="space-y-3.5 text-sm text-stone-700 pt-6 border-t border-stone-200">
                 <li className="flex items-center gap-3">
-                  <Check className="w-4 h-4 text-rose-600 shrink-0" />
+                  <Check className="w-4 h-4 text-[#E0006C] shrink-0" />
                   <span>Acceso completo a las <strong>12 clases del Bootcamp</strong></span>
                 </li>
                 <li className="flex items-center gap-3">
-                  <Check className="w-4 h-4 text-rose-600 shrink-0" />
+                  <Check className="w-4 h-4 text-[#E0006C] shrink-0" />
                   <span>Video de Introducción y guía de inicio</span>
                 </li>
                 <li className="flex items-center gap-3">
-                  <Check className="w-4 h-4 text-rose-600 shrink-0" />
+                  <Check className="w-4 h-4 text-[#E0006C] shrink-0" />
                   <span>2 Clases complementarias de estiramiento y movilidad</span>
                 </li>
                 <li className="flex items-center gap-3">
-                  <Check className="w-4 h-4 text-rose-600 shrink-0" />
+                  <Check className="w-4 h-4 text-[#E0006C] shrink-0" />
                   <span>Guía nutricional antiinflamatoria en PDF</span>
                 </li>
                 <li className="flex items-center gap-3">
-                  <Check className="w-4 h-4 text-rose-600 shrink-0" />
+                  <Check className="w-4 h-4 text-[#E0006C] shrink-0" />
                   <span>Acceso durante 6 meses para repetir a tu ritmo</span>
                 </li>
               </ul>
             </div>
 
             <button
-              onClick={() => handleCheckout('Bootcamp TOTAL+40')}
-              className="mt-8 w-full py-4 rounded-full bg-stone-900 hover:bg-stone-800 text-white font-bold text-sm shadow-md transition-all flex items-center justify-center gap-2"
+              onClick={() => handleChoose('Bootcamp TOTAL+40 (4 Semanas)', `${prices.bootcamp} ${prices.unit}`)}
+              className="mt-8 w-full py-4 rounded-full bg-stone-900 hover:bg-[#E0006C] text-white font-bold text-sm shadow-md transition-all flex items-center justify-center gap-2 group"
             >
-              <span>Empezar con {isUSD ? 'Wise (USD)' : 'Mercado Pago (ARS)'}</span>
-              <ExternalLink className="w-4 h-4" />
+              <span>Pagar con {isUSD ? 'Wise (USD)' : 'Mercado Pago (CBU)'}</span>
+              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </button>
           </div>
 
-          {/* Card 2: Membresía Total Anual (Highlighted) */}
-          <div className="bg-gradient-to-b from-stone-900 to-stone-950 text-white rounded-3xl p-8 sm:p-10 border border-stone-800 flex flex-col justify-between text-left relative shadow-2xl shadow-rose-950/20">
-            {/* Best Value Badge */}
-            <div className="absolute -top-3.5 right-8 bg-gradient-to-r from-rose-500 to-amber-500 text-white text-[11px] font-extrabold uppercase tracking-widest px-4 py-1 rounded-full shadow-lg">
+          {/* Card 2: Membresía Total Anual (Highlighted in Magenta Red) */}
+          <div className="bg-gradient-to-b from-stone-900 via-stone-900 to-stone-950 text-white rounded-3xl p-8 sm:p-10 border border-stone-800 flex flex-col justify-between text-left relative shadow-2xl shadow-[#E0006C]/10">
+            {/* Best Value Badge in Magenta Red */}
+            <div className="absolute -top-3.5 right-8 bg-gradient-to-r from-[#E0006C] to-[#C2005A] text-white text-[11px] font-extrabold uppercase tracking-widest px-4 py-1 rounded-full shadow-lg">
               Más Popular & Ahorro
             </div>
 
             <div>
-              <span className="text-xs font-bold uppercase tracking-wider text-rose-400">
+              <span className="text-xs font-bold uppercase tracking-wider text-[#FF4D94]">
                 Pase Anual Completo
               </span>
               <h3 className="text-2xl font-bold text-white mt-1 mb-2">
@@ -155,34 +154,34 @@ export const Pricing: React.FC<PricingProps> = ({ currency, setCurrency }) => {
 
               <ul className="space-y-3.5 text-sm text-stone-300 pt-6 border-t border-stone-800">
                 <li className="flex items-center gap-3">
-                  <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
+                  <Sparkles className="w-4 h-4 text-[#FF4D94] shrink-0" />
                   <span><strong>Todo lo incluido</strong> en el Bootcamp TOTAL+40</span>
                 </li>
                 <li className="flex items-center gap-3">
-                  <Check className="w-4 h-4 text-rose-400 shrink-0" />
+                  <Check className="w-4 h-4 text-[#E0006C] shrink-0" />
                   <span>Biblioteca completa de rutinas HIIT sin impacto</span>
                 </li>
                 <li className="flex items-center gap-3">
-                  <Check className="w-4 h-4 text-rose-400 shrink-0" />
+                  <Check className="w-4 h-4 text-[#E0006C] shrink-0" />
                   <span>Nuevos menús y recetarios mensuales</span>
                 </li>
                 <li className="flex items-center gap-3">
-                  <Check className="w-4 h-4 text-rose-400 shrink-0" />
+                  <Check className="w-4 h-4 text-[#E0006C] shrink-0" />
                   <span>Acceso a la comunidad privada de mujeres +40</span>
                 </li>
                 <li className="flex items-center gap-3">
-                  <Check className="w-4 h-4 text-rose-400 shrink-0" />
+                  <Check className="w-4 h-4 text-[#E0006C] shrink-0" />
                   <span>Sesiones mensuales de preguntas y respuestas en vivo</span>
                 </li>
               </ul>
             </div>
 
             <button
-              onClick={() => handleCheckout('TOTALHIIT Club Anual')}
-              className="mt-8 w-full py-4 rounded-full bg-rose-600 hover:bg-rose-500 text-white font-bold text-sm shadow-lg shadow-rose-600/30 transition-all flex items-center justify-center gap-2"
+              onClick={() => handleChoose('TOTALHIIT Club Anual', `${prices.annual} ${prices.unit}`)}
+              className="mt-8 w-full py-4 rounded-full bg-[#E0006C] hover:bg-[#C2005A] text-white font-bold text-sm shadow-lg shadow-[#E0006C]/30 transition-all flex items-center justify-center gap-2 group"
             >
-              <span>Unirme al Club con {isUSD ? 'Wise' : 'Mercado Pago'}</span>
-              <ExternalLink className="w-4 h-4" />
+              <span>Unirme con {isUSD ? 'Wise (USD)' : 'Mercado Pago (CBU)'}</span>
+              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </button>
           </div>
 
@@ -195,12 +194,12 @@ export const Pricing: React.FC<PricingProps> = ({ currency, setCurrency }) => {
             <span>Pagos encriptados y 100% seguros</span>
           </div>
           <div className="flex items-center gap-2">
-            <Globe className="w-4 h-4 text-blue-500" />
-            <span>Wise: Cobro oficial en USD para todo el mundo</span>
+            <Globe className="w-4 h-4 text-emerald-500" />
+            <span>Wise: Cuenta oficial de Eliani Valentina Planchez (USD)</span>
           </div>
           <div className="flex items-center gap-2">
             <CreditCard className="w-4 h-4 text-sky-500" />
-            <span>Mercado Pago: Tarjetas de crédito/débito en Argentina</span>
+            <span>Mercado Pago: Transferencia directa a CBU (ARS)</span>
           </div>
         </div>
 

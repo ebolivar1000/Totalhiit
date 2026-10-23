@@ -60,8 +60,8 @@ Registrar aquí las decisiones que no deben perderse al cambiar de IA.
 - Decisión: `src/data/contact.ts` concentra WhatsApp / Instagram / YouTube y el helper
   `buildWhatsappUrl()`. Los datos bancarios quedan en `src/components/PaymentModal.tsx`.
   `WHATSAPP_NUMBER` vacío hace que el enlace caiga al selector de contactos de WhatsApp en vez de
-  romper. `YOUTUBE_URL` apunta por defecto al video oficial de introducción (enlace verificado)
-  hasta que se conozca el canal.
+  romper. `YOUTUBE_URL` apunta al canal oficial
+  (`youtube.com/channel/UC737ehJ-_dCu68IaZnC6zew?sub_confirmation=1`).
 - Motivo: Evitar links muertos y que el dato de contacto se actualice en un solo lugar. La IA no
   puede ver imágenes ni inventar datos de la dueña del negocio: los placeholders quedan marcados.
 - Archivos afectados: `src/data/contact.ts`, `src/components/PaymentModal.tsx`, `src/components/Footer.tsx`.

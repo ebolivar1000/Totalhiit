@@ -8,8 +8,8 @@ export const WHATSAPP_NUMBER = '5491154188296';
 
 export const INSTAGRAM_URL = 'https://www.instagram.com/totalhiit1';
 
-/** Canal de YouTube. Mientras no se cargue el canal real, apunta al video oficial de introduccion. */
-export const YOUTUBE_URL = 'https://www.youtube.com/watch?v=Fnk5WgIfZog';
+/** Canal de YouTube oficial (el parámetro pide suscripción). */
+export const YOUTUBE_URL = 'https://www.youtube.com/channel/UC737ehJ-_dCu68IaZnC6zew?sub_confirmation=1';
 
 /** Construye el enlace de WhatsApp con el mensaje precargado. */
 export const buildWhatsappUrl = (message: string): string => {

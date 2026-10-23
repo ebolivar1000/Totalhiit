@@ -82,6 +82,9 @@ Desarrollar la plataforma web y clone funcional para TOTALHIIT (+40) enfocada en
 
 ## Tercera tanda (2026-10-22): publicación
 - **Logo**: el fueguito naranja de Navbar y Footer se reemplazó por `public/images/certificado.jpg`.
+- **Logo definitivo + YouTube** (2026-10-23): Navbar y Footer usan `public/images/logo.png` (500x500);
+  se eliminó `certificado.jpg` del sitio y el ícono de YouTube apunta al canal oficial
+  `https://www.youtube.com/channel/UC737ehJ-_dCu68IaZnC6zew?sub_confirmation=1`.
 - **GitHub**: repo sincronizado con `github.com/ebolivar1000/Totalhiit` (rama `main`), integrando el
   commit inicial del remoto; `.gitignore` unificado y `tsconfig.tsbuildinfo` destrackeado.
 - **Backend serverless** en `functions/` (Cloudflare Pages):

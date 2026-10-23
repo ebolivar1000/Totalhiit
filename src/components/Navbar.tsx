@@ -17,8 +17,8 @@ export const Navbar: React.FC<NavbarProps> = ({ currency, setCurrency, onOpenPri
         <a href="#" className="flex items-center gap-2 group">
           <div className="w-10 h-10 rounded-xl overflow-hidden bg-white ring-1 ring-stone-200 shadow-md shadow-rose-500/20 group-hover:scale-105 transition-transform">
             <img
-              src="/images/certificado.jpg"
-              alt="Certificación TOTALHIIT"
+              src="/images/logo.png"
+              alt="TOTALHIIT"
               className="w-full h-full object-cover"
             />
           </div>

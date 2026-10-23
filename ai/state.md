@@ -98,6 +98,10 @@ cobro dual: **Wise (USD)** para el exterior y **Mercado Pago / transferencia ban
 - El fueguito naranja del logo en Navbar y Footer se reemplazó por `public/images/certificado.jpg`
   (copia optimizada a 1400x781, 156 KB; original 2752x1536 en OneDrive). Se mantiene el fueguito del
   Hero (celda del collage) por ahora.
+- **Logo definitivo (2026-10-23)**: `certificado.jpg` se reemplazó por `public/images/logo.png`
+  (500x500, 65 KB, original en OneDrive) en Navbar y Footer; `certificado.jpg` se eliminó de
+  `public/`. `YOUTUBE_URL` ahora es el canal oficial
+  `https://www.youtube.com/channel/UC737ehJ-_dCu68IaZnC6zew?sub_confirmation=1`.
 - Verificado headless: 13/13 checks de auth y persistencia OK, sección `#vivo` con video pintando
   contenido real y banner con degradado `#E72F86 → #FF3287 → #FFB400`, y panel admin renderizando
   tras login programático.
@@ -125,7 +129,7 @@ cobro dual: **Wise (USD)** para el exterior y **Mercado Pago / transferencia ban
 - **Verificado end-to-end**: `POST /api/login` 200, `GET /api/session` 200, `POST /api/content` 200
   (con sesión) y `GET /api/content` devolviendo KV; `/admin` responde 200 (`.html` redirige con 308,
   es el pretty-URL de Pages). `index.html`, `/fonts/edo.woff`, `/videos/entrenamiento.mp4` y
-  `/images/certificado.jpg` responden 200.
+  `/images/logo.png` responden 200.
 - Comandos: `npx wrangler pages deploy --project-name totalhiit --branch main` (usa `dist/`),
   `npx wrangler pages deployment tail https://<hash>.totalhiit.pages.dev --project-name totalhiit`.
 
@@ -138,8 +142,7 @@ cobro dual: **Wise (USD)** para el exterior y **Mercado Pago / transferencia ban
   del lockup requiere mirada humana.
 
 ## Trabajo pendiente
-- **Completar los datos definitivos**: `YOUTUBE_URL` (hoy apunta al video de introducción) en
-  `src/data/contact.ts`; alias de Mercado Pago y datos bancarios en
+- **Completar los datos definitivos**: alias de Mercado Pago y datos bancarios en
   `src/components/PaymentModal.tsx` (el alias dice literalmente "Verificar CBU").
 - Revisión visual del Hero magenta y del tamaño del lockup en Edo en navegador (el modelo no puede
   ver imágenes): si el brush queda muy grande o chico en móvil, ajustar `text-[28px]` / `text-[13px]`

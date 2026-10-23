@@ -14,7 +14,7 @@ export const Footer: React.FC = () => {
             <div className="flex items-center gap-2 mb-4">
               <div className="w-10 h-10 rounded-xl overflow-hidden bg-white ring-1 ring-stone-700 shadow-md">
                 <img
-                  src="/images/logo.png"
+                  src="/images/logo_valen.jpeg"
                   alt="TOTALHIIT"
                   className="w-full h-full object-cover"
                 />

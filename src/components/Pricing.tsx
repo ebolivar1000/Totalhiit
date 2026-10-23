@@ -8,6 +8,36 @@ interface PricingProps {
   onSelectPayment: (method: 'wise' | 'mercadopago', planName: string, amount: string) => void;
 }
 
+const doublePrice = (value: string): string => {
+  const match = value.match(/^(.*?)(\d[\d.,]*)(.*)$/);
+  if (!match) return value;
+
+  const [, prefix, raw, suffix] = match;
+  const thousandsDot = /^\d{1,3}(\.\d{3})+$/.test(raw);
+  const thousandsComma = /^\d{1,3}(,\d{3})+$/.test(raw);
+  const decimalDot = /^\d+\.\d{1,2}$/.test(raw);
+  const decimalComma = /^\d+,\d{1,2}$/.test(raw);
+
+  let numeric: number;
+  if (thousandsDot) numeric = Number(raw.replace(/\./g, ''));
+  else if (thousandsComma) numeric = Number(raw.replace(/,/g, ''));
+  else if (decimalComma) numeric = Number(raw.replace(',', '.'));
+  else if (decimalDot) numeric = Number(raw);
+  else numeric = Number(raw.replace(/[.,]/g, ''));
+
+  if (!Number.isFinite(numeric)) return value;
+
+  const doubled = numeric * 2;
+  let formatted: string;
+  if (thousandsDot) formatted = doubled.toLocaleString('es-AR', { maximumFractionDigits: 0 });
+  else if (thousandsComma) formatted = doubled.toLocaleString('en-US', { maximumFractionDigits: 0 });
+  else if (decimalDot) formatted = doubled.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  else if (decimalComma) formatted = doubled.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  else formatted = String(doubled);
+
+  return `${prefix}${formatted}${suffix}`;
+};
+
 export const Pricing: React.FC<PricingProps> = ({ currency, setCurrency, onSelectPayment }) => {
   const isUSD = currency === 'USD';
   const { prices: editablePrices } = useSiteContent();
@@ -83,6 +113,11 @@ export const Pricing: React.FC<PricingProps> = ({ currency, setCurrency, onSelec
                 El curso completo de 4 semanas para resetear tu fuerza, cuerpo y energía.
               </p>
 
+              <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-[#FFE1EE] border border-[#FFC2DC] px-3 py-1 text-[11px] font-extrabold tracking-wide text-[#C2005A]">
+                Promo 50% desc.
+                <span className="text-stone-400 line-through decoration-stone-400/80">({doublePrice(prices.bootcamp)})</span>
+              </div>
+
               <div className="flex items-baseline gap-2 mb-6">
                 <span className="text-4xl sm:text-5xl font-extrabold text-stone-900">
                   {prices.bootcamp}
@@ -142,6 +177,11 @@ export const Pricing: React.FC<PricingProps> = ({ currency, setCurrency, onSelec
               <p className="text-stone-400 text-sm mb-6">
                 Todas las rutinas pasadas, presentes y futuras, además del Bootcamp +40.
               </p>
+
+              <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-white/10 border border-white/15 px-3 py-1 text-[11px] font-extrabold tracking-wide text-[#FF9BC4]">
+                Promo 50% desc.
+                <span className="text-stone-400/80 line-through decoration-stone-400/80">({doublePrice(prices.annual)})</span>
+              </div>
 
               <div className="flex items-baseline gap-2 mb-6">
                 <span className="text-4xl sm:text-5xl font-extrabold text-white">

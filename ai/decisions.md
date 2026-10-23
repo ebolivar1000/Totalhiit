@@ -226,3 +226,17 @@ Registrar aquí las decisiones que no deben perderse al cambiar de IA.
   (Fase 2). El video va silenciado por la política de autoplay de los navegadores.
 - Archivos afectados: `src/App.tsx`, `src/components/Navbar.tsx`, `src/components/Hero.tsx`,
   `public/videos/intro-totalhiit.mp4`, `docs/arquitectura.docx` (v1.1).
+
+## Decisión 21 — Logo de Valen y promo 50% derivada del precio publicado
+- Fecha: 2026-10-23
+- Decisión: Navbar y Footer usan `public/images/logo_valen.jpeg` (1254x1254). En cada tarjeta de
+  Precios se muestra, sobre el importe, la etiqueta «Promo 50% desc.» con el **doble del precio
+  tachado** entre paréntesis.
+- Cálculo: se hace en el cliente con `doublePrice()` (en `Pricing.tsx`), que detecta el formato del
+  importe editable (miles con punto o coma, decimales) y lo duplica conservando símbolo y
+  separadores. No se persiste en KV ni requiere deploy al cambiar precios desde el panel.
+- Alcance: es solo visual; el botón de pago sigue enviando el precio publicado (no el tachado).
+- Consecuencia: `logo.png` queda en `public/` sin referencias como respaldo para bundles cacheados;
+  se puede borrar cuando ya no haya tráfico con la versión anterior.
+- Archivos afectados: `src/components/Navbar.tsx`, `src/components/Footer.tsx`,
+  `src/components/Pricing.tsx`, `public/images/logo_valen.jpeg`, `docs/arquitectura.docx` (v1.2).

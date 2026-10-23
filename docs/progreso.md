@@ -82,8 +82,8 @@ Desarrollar la plataforma web y clone funcional para TOTALHIIT (+40) enfocada en
 
 ## Tercera tanda (2026-10-22): publicación
 - **Logo**: el fueguito naranja de Navbar y Footer se reemplazó por `public/images/certificado.jpg`.
-- **Logo definitivo + YouTube** (2026-10-23): Navbar y Footer usan `public/images/logo.png` (500x500);
-  se eliminó `certificado.jpg` del sitio y el ícono de YouTube apunta al canal oficial
+- **Logo definitivo + YouTube** (2026-10-23): Navbar y Footer usaron `public/images/logo.png` (500x500,
+  luego reemplazado por `logo_valen.jpeg`); se eliminó `certificado.jpg` del sitio y el ícono de YouTube apunta al canal oficial
   `https://www.youtube.com/channel/UC737ehJ-_dCu68IaZnC6zew?sub_confirmation=1`.
 - **GitHub**: repo sincronizado con `github.com/ebolivar1000/Totalhiit` (rama `main`), integrando el
   commit inicial del remoto; `.gitignore` unificado y `tsconfig.tsbuildinfo` destrackeado.
@@ -108,9 +108,19 @@ Desarrollar la plataforma web y clone funcional para TOTALHIIT (+40) enfocada en
 - **Respaldo**: `docs/arquitectura.docx` (v1.1) agregado al repo y `README.md` reescrito con URLs,
   comandos y mapa de respaldos (GitHub + Cloudflare + KV + OneDrive).
 
+## Quinta tanda (2026-10-23): logo nuevo y promo 50%
+- **Logo**: Navbar y Footer usan `public/images/logo_valen.jpeg` (1254x1254, 135 KB, copiado de
+  OneDrive). `logo.png` quedó en `public/` sin referencias, como respaldo para bundles cacheados.
+- **Precios con promo**: sobre cada importe (Bootcamp y Anual, USD y ARS) se muestra la etiqueta
+  **«Promo 50% desc.»** con el **doble del precio tachado** entre paréntesis. El cálculo duplica el
+  valor publicado respetando su formato ($39 → $78; $49.999 → $99.998; $129 → $258;
+  $159.999 → $319.998) y es solo visual: el botón de pago sigue enviando el precio real.
+- Desplegado y verificado: `/images/logo_valen.jpeg` 200 (137.933 bytes) y etiqueta de promo presente
+  en el bundle servido.
+
 ## En desarrollo
-- Revisión visual del usuario en navegador: Hero con el video en bucle, lockup Edo, sección Clases en Vivo
-  y panel admin.
+- Revisión visual del usuario en navegador: Hero con el video en bucle, logo nuevo, promo en Precios,
+  lockup Edo, sección Clases en Vivo y panel admin.
 - Unificación de paleta de marca (magenta `#E0006C` vs. `rose-600`).
 
 ## Pendiente

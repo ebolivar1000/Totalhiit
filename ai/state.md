@@ -105,7 +105,8 @@ cobro dual: **Wise (USD)** para el exterior y **Mercado Pago / transferencia ban
   (copia optimizada a 1400x781, 156 KB; original 2752x1536 en OneDrive). Se mantiene el fueguito del
   Hero (celda del collage) por ahora.
 - **Logo definitivo (2026-10-23)**: `certificado.jpg` se reemplazó por `public/images/logo.png`
-  (500x500, 65 KB, original en OneDrive) en Navbar y Footer; `certificado.jpg` se eliminó de
+  (500x500, 65 KB, original en OneDrive) en Navbar y Footer; luego se cambió por
+  `public/images/logo_valen.jpeg` (1254x1254, 135 KB). `certificado.jpg` se eliminó de
   `public/`. `YOUTUBE_URL` ahora es el canal oficial
   `https://www.youtube.com/channel/UC737ehJ-_dCu68IaZnC6zew?sub_confirmation=1`.
 - Verificado headless: 13/13 checks de auth y persistencia OK, sección `#vivo` con video pintando
@@ -135,7 +136,11 @@ cobro dual: **Wise (USD)** para el exterior y **Mercado Pago / transferencia ban
 - **Verificado end-to-end**: `POST /api/login` 200, `GET /api/session` 200, `POST /api/content` 200
   (con sesión) y `GET /api/content` devolviendo KV; `/admin` responde 200 (`.html` redirige con 308,
   es el pretty-URL de Pages). `index.html`, `/fonts/edo.woff`, `/videos/entrenamiento.mp4`,
-  `/videos/intro-totalhiit.mp4` y `/images/logo.png` responden 200.
+  `/videos/intro-totalhiit.mp4` y `/images/logo_valen.jpeg` responden 200.
+- **Cambios 2026-10-23 (deploy `8ad40a18`)**: Navbar y Footer usan `logo_valen.jpeg` (1254x1254,
+  135 KB). En Precios, sobre cada importe (Bootcamp y Anual, USD y ARS) aparece **«Promo 50% desc.»**
+  con el **doble del precio tachado**; el cálculo se hace en el cliente respetando el formato y no
+  altera el monto que se envía al pago.
 - **Cambios 2026-10-23 (deploy `4792af04`)**: Clases en Vivo pasó a ser la primera sección (y primer
   ítem del menú); el botón del Hero ahora dice **"Clase Abierta de Muestra"**; la tarjeta del Hero
   reproduce `INTRO TOTALHIIT.mp4` en bucle (H.264 720p, 31 s, sin audio, 2,8 MB, transcodificado desde
@@ -196,7 +201,8 @@ Pendiente: revisión visual en celular; completar el alias de Mercado Pago; deci
 - `src/data/contact.ts` — **fuente única de contacto** (WhatsApp, Instagram, YouTube).
 - `src/components/PaymentModal.tsx` — **contiene los datos bancarios de cobro** (no duplicarlos en
   documentación ni en archivos de memoria).
-- `src/components/Pricing.tsx` — planes, precios por divisa y disparador `onSelectPayment`.
+- `src/components/Pricing.tsx` — planes, precios por divisa, promo 50% (doble tachado) y disparador
+  `onSelectPayment`.
 - `src/components/VideoModal.tsx` — player modal, lógica de contenido bloqueado vs. muestra.
 - `src/components/BootcampModules.tsx` — tabs por semana + módulo de estiramiento.
 - `src/components/Navbar.tsx`, `NutritionPillars.tsx`, `FAQ.tsx`, `Footer.tsx`.
@@ -214,7 +220,8 @@ Pendiente: revisión visual en celular; completar el alias de Mercado Pago; deci
 - `src/index.css` — tipografías, `@font-face` de Edo + `.font-edo`, `font-serif-display` y keyframes
   propios (`animate-fade-in`).
 - `public/fonts/edo.woff` — fuente de marca (Edo SZ, uso comercial libre) + `public/fonts/README.txt`.
-- `public/images/` — miniaturas del PDF (`img_*`) y creatividades del usuario (`user/totalhiit_*`).
+- `public/images/` — miniaturas del PDF (`img_*`), creatividades del usuario (`user/totalhiit_*`) y
+  `logo_valen.jpeg` (logo del Navbar/Footer; `logo.png` queda como respaldo sin referencias).
 - `public/videos/entrenamiento.mp4` — video de la sección Clases en Vivo (excluido del watcher).
 - `public/videos/intro-totalhiit.mp4` — reel del Hero (H.264 720p, 31 s, sin audio, 2,8 MB).
 - `docs/progreso.md` — bitácora de avance. `docs/arquitectura.md` — arquitectura aprobada.

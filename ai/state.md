@@ -12,11 +12,13 @@ cobro dual: **Wise (USD)** para el exterior y **Mercado Pago / transferencia ban
 - React 19 + TypeScript 5.7 + Vite 6
 - Tailwind CSS v4 (plugin `@tailwindcss/vite`, sin `tailwind.config.js`)
 - Lucide React (iconos)
-- Sin backend ni librerías de pago: el checkout es **manual** (datos bancarios + confirmación por WhatsApp)
+- Cloudflare Pages Functions + Workers KV (backend serverless: contenido y login)
+- Sin librerías de pago: el checkout es **manual** (datos bancarios + confirmación por WhatsApp)
 
 ## Funcionalidades terminadas
-- Landing page completa: Navbar con selector de divisa, Hero, Bootcamp (4 semanas por tabs),
-  módulo complementario de estiramiento y movilidad, pilares nutricionales, precios, FAQ y Footer.
+- Landing page completa: Navbar con selector de divisa, **Clases en Vivo (primera sección)**, Hero,
+  Bootcamp (4 semanas por tabs), módulo complementario de estiramiento y movilidad, pilares
+  nutricionales, precios, FAQ y Footer.
 - Reproductor modal de video (`VideoModal`) con embed de YouTube (`youtube-nocookie`).
   - Video de Introducción: visible como muestra gratuita.
   - Las 12 clases + 2 de estiramiento: bloqueadas, con CTA de conversión al bloque de precios.
@@ -44,6 +46,9 @@ cobro dual: **Wise (USD)** para el exterior y **Mercado Pago / transferencia ban
 - Referencia de estilo: `befitbycata.com` usa una sola foto full-bleed con el texto encima
   (sin collage); se replicó el concepto de fondo a sangre, pero con mosaico por tratarse de
   material vertical de Instagram.
+- **Tarjeta derecha (2026-10-23)**: reemplaza la miniatura de YouTube por un `<video>` en bucle
+  (`autoplay muted loop playsInline`) con el reel `INTRO TOTALHIIT`; el CTA «Clase Abierta de Muestra»
+  sigue abriendo el video de introducción de YouTube en modal.
 
 ## Tipografía de marca — Edo (brush script) autoalojada
 - La marca "TOTALHIIT / Bootcamp +40" usa **Edo (Edo SZ)**, brush script de Vic Fieger, uso comercial
@@ -80,7 +85,8 @@ cobro dual: **Wise (USD)** para el exterior y **Mercado Pago / transferencia ban
   `http://127.0.0.1:5173/`, `http://localhost:5173/` y en la LAN (`http://192.168.0.84:5173/`).
 
 ## Sección "Clases en Vivo" + panel de administración (última tanda)
-- Nueva sección `#vivo` entre Precios y FAQ (`src/components/LiveClasses.tsx`): copy de la modalidad
+- Sección `#vivo` (`src/components/LiveClasses.tsx`), **primera de la página desde el 2026-10-23**
+  (antes estaba entre Precios y FAQ): copy de la modalidad
   (8, 12 o 16 clases en vivo por mes por Zoom, seguimiento personalizado, comunidad, nutrición y
   acompañamiento privado), cards por paquete, CTA a WhatsApp y banner destacado
   **"¡Aprovecha que tienes una clase gratis de prueba!"**. Incluye video en bucle
@@ -116,7 +122,7 @@ cobro dual: **Wise (USD)** para el exterior y **Mercado Pago / transferencia ban
 
 ## EN PRODUCCION (publicado 2026-10-22)
 - **Sitio público: https://totalhiit.pages.dev** · **Panel: https://totalhiit.pages.dev/admin**
-  (usuario `admin`, clave `TotalHiit2026!`, definida por la dueña; se puede cambiar en Seguridad).
+  (usuario `admin`; clave definida por la dueña, cambiable en Seguridad; no se guarda en el repo).
 - Proyecto de Cloudflare Pages `totalhiit` (cuenta `caribialabs@gmail.com`), deploy por **subida
   directa con `wrangler pages deploy`** (NO conectado a Git; cada push NO auto-despliega: hay que
   correr `npm run build` + deploy, o conectar el repo desde el dashboard).
@@ -128,8 +134,15 @@ cobro dual: **Wise (USD)** para el exterior y **Mercado Pago / transferencia ban
   `functions/_lib/auth.ts` y `scripts/admin-secrets.mjs`.
 - **Verificado end-to-end**: `POST /api/login` 200, `GET /api/session` 200, `POST /api/content` 200
   (con sesión) y `GET /api/content` devolviendo KV; `/admin` responde 200 (`.html` redirige con 308,
-  es el pretty-URL de Pages). `index.html`, `/fonts/edo.woff`, `/videos/entrenamiento.mp4` y
-  `/images/logo.png` responden 200.
+  es el pretty-URL de Pages). `index.html`, `/fonts/edo.woff`, `/videos/entrenamiento.mp4`,
+  `/videos/intro-totalhiit.mp4` y `/images/logo.png` responden 200.
+- **Cambios 2026-10-23 (deploy `4792af04`)**: Clases en Vivo pasó a ser la primera sección (y primer
+  ítem del menú); el botón del Hero ahora dice **"Clase Abierta de Muestra"**; la tarjeta del Hero
+  reproduce `INTRO TOTALHIIT.mp4` en bucle (H.264 720p, 31 s, sin audio, 2,8 MB, transcodificado desde
+  HEVC 1080p con ffmpeg). Verificado por píxeles y por HTTP en producción.
+- **Respaldo en la nube**: repo privado con código, imágenes y ambos videos; `docs/arquitectura.docx`
+  v1.1 versionado; `README.md` documenta URLs, comandos y el mapa de respaldos (GitHub + Cloudflare +
+  KV + OneDrive).
 - Comandos: `npx wrangler pages deploy --project-name totalhiit --branch main` (usa `dist/`),
   `npx wrangler pages deployment tail https://<hash>.totalhiit.pages.dev --project-name totalhiit`.
 
@@ -150,23 +163,19 @@ cobro dual: **Wise (USD)** para el exterior y **Mercado Pago / transferencia ban
 - Agregar el archivo del recetario nutricional mencionado en los planes (hoy no existe en el repo).
 - Unificar la paleta de marca: conviven el magenta `#E0006C` (Hero + PaymentModal) y el rose de
   Tailwind (`rose-600`) en Navbar, BootcampModules, Pricing y VideoModal.
-- **Crear el proyecto en Cloudflare Pages** (lo hace la dueña de la cuenta): conectar el repo,
-  build `npm run build` + salida `dist`, KV `totalhiit-content` como `SITE_CONTENT`, y los secretos
-  `ADMIN_USER` / `ADMIN_PASSWORD_HASH` / `SESSION_SECRET` generados con `npm run admin:secrets`.
-  Detalle en `docs/despliegue.md`.
-- **Auto-deploy (opcional)**: conectar `github.com/ebolivar1000/Totalhiit` desde el dashboard
-  (Workers & Pages → totalhiit → Settings → Builds → Git Repository) para que cada push a `main`
-  despliegue solo. Hoy el deploy es manual con `wrangler pages deploy`.
+- **Auto-deploy (opcional)**: el proyecto `totalhiit` es Direct Upload y Cloudflare no permite
+  convertirlo a Git. Las vías son (a) GitHub Actions con `wrangler pages deploy` y un
+  `CLOUDFLARE_API_TOKEN` como secreto del repo, o (b) crear otro proyecto "Connect to Git" y recargar
+  KV/secretos. Hoy el deploy es manual con `wrangler pages deploy`.
 - **Fase 2 (R2)**: bucket `totalhiit-media` + `functions/api/upload.ts` para que el admin suba
   imágenes/videos desde el panel. Hoy los medios viajan en el repo.
-- Revisión visual de la sección Clases en Vivo (video, cards, banner), del logo con el certificado y
-  del panel admin en navegador.
+- Revisión visual en navegador del Hero con el video en bucle, de la sección Clases en Vivo y del
+  panel admin.
 
 ## Próxima tarea
-El sitio ya está en producción (**https://totalhiit.pages.dev**). Pendiente: revisión visual en
-celular del sitio y del panel; probar **Publicar en PROD** desde `/admin` en un navegador distinto;
-completar `YOUTUBE_URL` y el alias de Mercado Pago; evaluar Fase 2 (R2 para subir medios desde el
-panel) y conectar el repo para auto-deploy.
+El sitio está en producción (**https://totalhiit.pages.dev**) con el nuevo orden y el video del Hero.
+Pendiente: revisión visual en celular; completar el alias de Mercado Pago; decidir auto-deploy
+(GitHub Actions con token o proyecto Git-connected) y evaluar Fase 2 (R2 para subir medios).
 
 ## Comandos utiles
 - `npm run dev` → dev server en `http://127.0.0.1:5173/` (LAN: `http://192.168.0.84:5173/`).
@@ -177,11 +186,12 @@ panel) y conectar el repo para auto-deploy.
 - `npm run test:api` → 17 pruebas de las Functions (login, KV, rate limit) sin desplegar.
 - `npm run admin:secrets -- "Clave"` → genera `ADMIN_PASSWORD_HASH` y `SESSION_SECRET` para Cloudflare.
 - Verificar render sin abrir navegador: `msedge --headless=new --screenshot=... <url>`.
-- `git push origin main` → despliegue automático en Cloudflare Pages.
+- `git push origin main` → **solo respalda en GitHub**; el deploy es manual con
+  `npx wrangler pages deploy --project-name totalhiit --branch main`.
 
 ## Archivos relevantes
 - `src/App.tsx` — orquestación de estado: `currency`, `activeVideo`, `payment` (PaymentSelection).
-- `src/components/Hero.tsx` — collage de fondo + copy + card de video.
+- `src/components/Hero.tsx` — collage de fondo + copy + tarjeta con el video intro en bucle.
 - `src/data/heroCollage.ts` — retícula del collage (imágenes + `object-position`).
 - `src/data/contact.ts` — **fuente única de contacto** (WhatsApp, Instagram, YouTube).
 - `src/components/PaymentModal.tsx` — **contiene los datos bancarios de cobro** (no duplicarlos en
@@ -206,4 +216,5 @@ panel) y conectar el repo para auto-deploy.
 - `public/fonts/edo.woff` — fuente de marca (Edo SZ, uso comercial libre) + `public/fonts/README.txt`.
 - `public/images/` — miniaturas del PDF (`img_*`) y creatividades del usuario (`user/totalhiit_*`).
 - `public/videos/entrenamiento.mp4` — video de la sección Clases en Vivo (excluido del watcher).
+- `public/videos/intro-totalhiit.mp4` — reel del Hero (H.264 720p, 31 s, sin audio, 2,8 MB).
 - `docs/progreso.md` — bitácora de avance. `docs/arquitectura.md` — arquitectura aprobada.

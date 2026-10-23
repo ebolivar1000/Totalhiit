@@ -81,7 +81,7 @@ export const Hero: React.FC<HeroProps> = ({ onPlayVideo, onOpenPricing }) => {
                 <div className="w-8 h-8 rounded-full bg-white/20 text-white flex items-center justify-center">
                   <Play className="w-4 h-4 fill-white ml-0.5" />
                 </div>
-                Ver Video de Introducción
+                Clase Abierta de Muestra
               </button>
             </div>
 
@@ -106,34 +106,24 @@ export const Hero: React.FC<HeroProps> = ({ onPlayVideo, onOpenPricing }) => {
           <div className="lg:col-span-5 relative">
             <div className="relative mx-auto max-w-md lg:max-w-none rounded-3xl p-3 bg-white/10 border border-white/25 shadow-2xl shadow-black/30 backdrop-blur-md">
               
-              {/* Thumbnail with Play Button */}
-              <div
-                onClick={() => onPlayVideo(INTRO_VIDEO)}
-                className="group relative cursor-pointer aspect-[4/3] rounded-2xl overflow-hidden bg-stone-900 shadow-inner"
-              >
-                <img
-                  src={INTRO_VIDEO.image}
-                  alt="Video de Introducción TotalHIIT +40"
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-95 group-hover:opacity-100"
+              {/* Intro video en bucle continuo */}
+              <div className="relative aspect-video rounded-2xl overflow-hidden bg-stone-900 shadow-inner">
+                <video
+                  src="/videos/intro-totalhiit.mp4"
+                  poster={INTRO_VIDEO.image}
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  preload="auto"
+                  aria-label="INTRO TOTALHIIT"
+                  className="w-full h-full object-cover"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-stone-950/85 via-black/20 to-transparent" />
+                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-stone-950/70 via-transparent to-transparent" />
 
-                {/* Big Center Play Icon in Magenta Red */}
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-16 h-16 rounded-full bg-[#E0006C] text-white flex items-center justify-center shadow-lg shadow-[#E0006C]/50 group-hover:scale-110 transition-all">
-                    <Play className="w-8 h-8 fill-white ml-1" />
-                  </div>
-                </div>
-
-                {/* Badge Overlay */}
-                <div className="absolute bottom-4 left-4 right-4 text-white">
-                  <span className="text-[11px] font-bold uppercase tracking-wider bg-[#E0006C] px-2.5 py-0.5 rounded-md inline-block mb-1 shadow-sm">
-                    Clase Abierta de Muestra
-                  </span>
-                  <p className="text-sm font-semibold leading-snug line-clamp-2">
-                    {INTRO_VIDEO.title}
-                  </p>
-                </div>
+                <span className="absolute bottom-4 left-4 text-[11px] font-bold uppercase tracking-wider bg-[#E0006C] text-white px-2.5 py-0.5 rounded-md shadow-sm">
+                  Clase Abierta de Muestra
+                </span>
               </div>
 
               {/* Floating Pill Cards */}

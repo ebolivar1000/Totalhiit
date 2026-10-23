@@ -11,7 +11,7 @@ Desarrollar la plataforma web y clone funcional para TOTALHIIT (+40) enfocada en
   - React 19 + TypeScript + Vite + Tailwind CSS v4 + Lucide React.
   - Reproductor modal de video interactivo con YouTube embeds sin salir de la página.
   - Barra de navegación con selector de divisa (`USD` vía Wise / `ARS` vía Mercado Pago).
-  - Hero section con video teaser de introducción y propuesta de valor enfocada en mujeres +40.
+  - Hero section con video de introducción y propuesta de valor enfocada en mujeres +40.
   - Módulos interactivos de las 4 semanas del Bootcamp con miniaturas, duración y descripción de cada clase.
   - Módulo complementario de estiramiento y movilidad articular.
   - Sección de pilares nutricionales adaptados a cambios hormonales y antiinflamación.
@@ -65,10 +65,10 @@ Desarrollar la plataforma web y clone funcional para TOTALHIIT (+40) enfocada en
   `#FFD3E6` y CTA blanco con texto magenta. Verificado por píxeles (`#B10050`).
 - **Marca en Edo**: WOFF autoalojado (`public/fonts/edo.woff`, Edo SZ de Vic Fieger) con `@font-face` +
   `.font-edo`; aplicado al lockup del Navbar y del Footer.
-- **Sección "Clases en Vivo"** (`#vivo`, entre Precios y FAQ): modalidad de 8/12/16 clases por mes por
-  Zoom, seguimiento personalizado, comunidad, nutrición y acompañamiento privado; CTA a WhatsApp;
-  banner de clase gratis de prueba; video en bucle `public/videos/entrenamiento.mp4` (1920x1080, 25 s).
-  Links en el menú de escritorio y móvil.
+- **Sección "Clases en Vivo"** (`#vivo`): modalidad de 8/12/16 clases por mes por Zoom, seguimiento
+  personalizado, comunidad, nutrición y acompañamiento privado; CTA a WhatsApp; banner de clase gratis
+  de prueba; video en bucle `public/videos/entrenamiento.mp4` (1920x1080, 25 s). Links en el menú de
+  escritorio y móvil. **Desde el 2026-10-23 es la primera sección de la página** (antes Precios/FAQ).
 - **Panel de administración** en `/admin.html`: login con clave cambiable, edición de precios, IDs de
   video e imágenes de fondo. Persistencia en `localStorage` (`src/data/siteContent.ts` +
   `useSiteContent`), consumida por Hero, Pricing y `handleOpenVideo`. El sitio compila en dos entradas
@@ -95,14 +95,26 @@ Desarrollar la plataforma web y clone funcional para TOTALHIIT (+40) enfocada en
   rate limit, logout). `npm run admin:secrets` genera los secretos para Cloudflare.
 - **Documentación**: `docs/despliegue.md` con los pasos de Cloudflare Pages + KV + secretos.
 
+## Cuarta tanda (2026-10-23): orden, video del Hero y respaldos
+- **Clases en Vivo pasa a ser la primera sección** de la página y el primer ítem del menú (escritorio y
+  móvil); el resto conserva su orden (Hero, Clases, Nutrición, Precios, FAQ).
+- **Botón del Hero** renombrado de "Ver Video de Introducción" a **"Clase Abierta de Muestra"**; sigue
+  abriendo el video de YouTube en el modal.
+- **La tarjeta del Hero** ahora reproduce `INTRO TOTALHIIT.mp4` en **bucle continuo, sin audio**. El
+  original venía en HEVC 1080p (Chrome/Firefox no lo reproducen sin códecs del sistema); se transcodificó
+  con ffmpeg a **H.264 720p, 31 s, 2,8 MB** y quedó en `public/videos/intro-totalhiit.mp4`.
+- Desplegado y verificado en producción: orden de secciones por píxeles (oscuro → magenta), botón nuevo
+  y video 200 con `Content-Type: video/mp4`.
+- **Respaldo**: `docs/arquitectura.docx` (v1.1) agregado al repo y `README.md` reescrito con URLs,
+  comandos y mapa de respaldos (GitHub + Cloudflare + KV + OneDrive).
+
 ## En desarrollo
-- Revisión visual del usuario en navegador: Hero magenta, lockup Edo, sección Clases en Vivo, logo con
-  certificado y panel admin.
+- Revisión visual del usuario en navegador: Hero con el video en bucle, lockup Edo, sección Clases en Vivo
+  y panel admin.
 - Unificación de paleta de marca (magenta `#E0006C` vs. `rose-600`).
 
 ## Pendiente
-- Completar `YOUTUBE_URL` en `src/data/contact.ts` y el alias de Mercado Pago en
-  `src/components/PaymentModal.tsx`.
+- Completar el alias de Mercado Pago en `src/components/PaymentModal.tsx`.
 - Conectar el repo a Git para auto-deploy (opcional; ver Decisión 19).
 - Fase 2: R2 para subir imágenes/videos desde el panel.
 - Agregar el archivo del recetario nutricional mencionado en los planes.
@@ -114,12 +126,12 @@ Desarrollar la plataforma web y clone funcional para TOTALHIIT (+40) enfocada en
 
 ## PUBLICADO (2026-10-22)
 - **Sitio: https://totalhiit.pages.dev** · **Panel: https://totalhiit.pages.dev/admin**
-  (usuario `admin`, clave `TotalHiit2026!`).
+  (usuario `admin`; clave definida por la dueña y cambiable desde Seguridad).
 - Deploy en Cloudflare Pages con `wrangler` (subida directa, no auto-deploy por Git), KV
   `SITE_CONTENT` y secretos `ADMIN_USER`/`ADMIN_PASSWORD_HASH`/`SESSION_SECRET`.
 - **Fix**: PBKDF2 bajó de 120.000 a **100.000** iteraciones (Cloudflare no soporta más y el login
   daba 500). Verificado end-to-end: login, sesión, publicar y leer contenido desde KV.
 
 ## Próxima tarea
-Probar en producción el login y **Publicar en PROD** desde otro navegador; revisión visual en celular;
-conectar el repo para auto-deploy (opcional); completar los datos de contacto definitivos.
+Revisión visual en celular del nuevo orden y del video del Hero; completar el alias de Mercado Pago;
+evaluar auto-deploy (GitHub Actions o proyecto Git-connected) y la Fase 2 (R2).

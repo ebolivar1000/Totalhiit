@@ -34,11 +34,11 @@ export const Navbar: React.FC<NavbarProps> = ({ currency, setCurrency, onOpenPri
 
         {/* Desktop Nav */}
         <nav className="hidden md:flex items-center gap-6 lg:gap-7 text-sm font-medium text-stone-600">
+          <a href="#vivo" className="hover:text-rose-600 transition-colors">Clases en Vivo</a>
           <a href="#programa" className="hover:text-rose-600 transition-colors">El Bootcamp</a>
           <a href="#clases" className="hover:text-rose-600 transition-colors">Clases (4 Semanas)</a>
           <a href="#nutricion" className="hover:text-rose-600 transition-colors">Nutrición +40</a>
           <a href="#precios" className="hover:text-rose-600 transition-colors">Precios</a>
-          <a href="#vivo" className="hover:text-rose-600 transition-colors">Clases en Vivo</a>
           <a href="#faq" className="hover:text-rose-600 transition-colors">Preguntas</a>
         </nav>
 
@@ -114,6 +114,13 @@ export const Navbar: React.FC<NavbarProps> = ({ currency, setCurrency, onOpenPri
       {mobileMenuOpen && (
         <div className="md:hidden border-b border-stone-200 bg-white px-4 pt-3 pb-6 space-y-3">
           <a
+            href="#vivo"
+            onClick={() => setMobileMenuOpen(false)}
+            className="block py-2 text-base font-medium text-stone-700 hover:text-rose-600"
+          >
+            Clases en Vivo
+          </a>
+          <a
             href="#programa"
             onClick={() => setMobileMenuOpen(false)}
             className="block py-2 text-base font-medium text-stone-700 hover:text-rose-600"
@@ -140,13 +147,6 @@ export const Navbar: React.FC<NavbarProps> = ({ currency, setCurrency, onOpenPri
             className="block py-2 text-base font-medium text-stone-700 hover:text-rose-600"
           >
             Precios
-          </a>
-          <a
-            href="#vivo"
-            onClick={() => setMobileMenuOpen(false)}
-            className="block py-2 text-base font-medium text-stone-700 hover:text-rose-600"
-          >
-            Clases en Vivo
           </a>
           <a
             href="#faq"

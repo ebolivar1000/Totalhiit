@@ -210,3 +210,19 @@ Registrar aquí las decisiones que no deben perderse al cambiar de IA.
 - Consecuencia: cada push a `main` NO despliega solo; hay que correr `npm run build` y
   `npx wrangler pages deploy --project-name totalhiit --branch main`.
 - Archivos afectados: `wrangler.toml`, `.gitignore` (`.wrangler/`, `.dev.vars`).
+
+## Decisión 20 — Clases en Vivo primero y video propio en bucle en el Hero
+- Fecha: 2026-10-23
+- Decisión: `LiveClasses` (`#vivo`) se renderiza **antes del Hero** y pasa a ser el primer ítem del
+  menú de escritorio y móvil. El CTA del Hero se llama **«Clase Abierta de Muestra»** y la tarjeta
+  derecha reproduce `/videos/intro-totalhiit.mp4` en bucle (`autoplay muted loop playsInline`) en
+  lugar de la miniatura de YouTube.
+- Motivo: pedido de la dueña (priorizar la modalidad en vivo y mostrar el reel sin depender de
+  YouTube ni de un clic). El CTA sigue abriendo el video de introducción de YouTube en el modal.
+- Códec: el archivo original llegó en **HEVC 1080p**, que Chrome y Firefox no decodifican sin soporte
+  extra del sistema. Se transcodificó una sola vez con ffmpeg a **H.264 720p, 31 s, sin audio,
+  2,8 MB** (`-crf 23 -preset slow -an -movflags +faststart`).
+- Consecuencia: `public/` pasa a ~20,9 MB por deploy; si se suman más videos conviene moverlos a R2
+  (Fase 2). El video va silenciado por la política de autoplay de los navegadores.
+- Archivos afectados: `src/App.tsx`, `src/components/Navbar.tsx`, `src/components/Hero.tsx`,
+  `public/videos/intro-totalhiit.mp4`, `docs/arquitectura.docx` (v1.1).

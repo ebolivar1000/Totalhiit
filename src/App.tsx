@@ -53,6 +53,8 @@ export const App: React.FC = () => {
 
       {/* Main Content */}
       <main className="flex-1">
+        <LiveClasses />
+
         <Hero
           onPlayVideo={handleOpenVideo}
           onOpenPricing={handleOpenPricing}
@@ -70,8 +72,6 @@ export const App: React.FC = () => {
           setCurrency={setCurrency}
           onSelectPayment={(method, planName, amount) => setPayment({ method, planName, amount })}
         />
-
-        <LiveClasses />
 
         <FAQ />
       </main>

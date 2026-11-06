@@ -38,7 +38,7 @@ import {
   SnapshotCotizacion,
 } from './cotizaciones';
 import { exportarAExcel, exportarAPDF } from './exportador';
-import { FichaRegistro, FICHAS_INICIALES } from './tiposFicha';
+import { FichaRegistro, FICHAS_INICIALES, COLUMNAS_49_GOOGLE_SHEETS, fichaAFila49 } from './tiposFicha';
 import FormularioRegistro from './registro/FormularioRegistro';
 
 const NOMBRES_MESES = [
@@ -352,36 +352,35 @@ export default function CRMApp() {
     ];
   });
 
-  // Fichas de Registro e Historial Integral (Google Form Integrado) - 23 Alumnas Oficiales
+  // Fichas de Registro e Historial Integral (Google Form Integrado - 49 Campos) - 23 Alumnas Oficiales
   const [fichas, setFichas] = useState<FichaRegistro[]>(() => {
-    const raw = localStorage.getItem('totalhiit_crm_fichas_registro_v3');
+    const raw = localStorage.getItem('totalhiit_crm_fichas_registro_v4');
     if (raw) {
       try {
         const parsed: FichaRegistro[] = JSON.parse(raw);
         if (Array.isArray(parsed) && parsed.length >= FICHAS_INICIALES.length) return parsed;
       } catch {}
     }
-    // Si viene de caché previa, asegurar que contenga las 23 fichas completas
+    // Si viene de caché previa (v3 o v1), fusionar conservando registros nuevos que no estén en FICHAS_INICIALES
     try {
-      const oldRaw = localStorage.getItem('totalhiit_crm_fichas_registro');
+      const oldRaw = localStorage.getItem('totalhiit_crm_fichas_registro_v3') || localStorage.getItem('totalhiit_crm_fichas_registro');
       if (oldRaw) {
         const oldParsed: FichaRegistro[] = JSON.parse(oldRaw);
         if (Array.isArray(oldParsed) && oldParsed.length > 0) {
-          const idsExistentes = new Set(oldParsed.map((f) => f.id || f.email));
-          const faltantes = FICHAS_INICIALES.filter((f) => !idsExistentes.has(f.id) && !idsExistentes.has(f.email));
-          const fusionadas = [...oldParsed, ...faltantes];
-          if (fusionadas.length >= FICHAS_INICIALES.length) {
-            localStorage.setItem('totalhiit_crm_fichas_registro_v3', JSON.stringify(fusionadas));
-            return fusionadas;
-          }
+          const idsIniciales = new Set(FICHAS_INICIALES.map((f) => f.id || f.email.toLowerCase()));
+          const registrosNuevos = oldParsed.filter((f) => !idsIniciales.has(f.id) && !idsIniciales.has(f.email?.toLowerCase()));
+          const fusionadas = [...registrosNuevos, ...FICHAS_INICIALES];
+          localStorage.setItem('totalhiit_crm_fichas_registro_v4', JSON.stringify(fusionadas));
+          return fusionadas;
         }
       }
     } catch {}
-    localStorage.setItem('totalhiit_crm_fichas_registro_v3', JSON.stringify(FICHAS_INICIALES));
+    localStorage.setItem('totalhiit_crm_fichas_registro_v4', JSON.stringify(FICHAS_INICIALES));
     return FICHAS_INICIALES;
   });
 
   useEffect(() => {
+    localStorage.setItem('totalhiit_crm_fichas_registro_v4', JSON.stringify(fichas));
     localStorage.setItem('totalhiit_crm_fichas_registro_v3', JSON.stringify(fichas));
     localStorage.setItem('totalhiit_crm_fichas_registro', JSON.stringify(fichas));
   }, [fichas]);
@@ -389,7 +388,7 @@ export default function CRMApp() {
   // Sincronización en vivo si una alumna envía su formulario desde otra pestaña o ventana
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
-      if ((e.key === 'totalhiit_crm_fichas_registro' || e.key === 'totalhiit_crm_fichas_registro_v3') && e.newValue) {
+      if ((e.key === 'totalhiit_crm_fichas_registro_v4' || e.key === 'totalhiit_crm_fichas_registro_v3' || e.key === 'totalhiit_crm_fichas_registro') && e.newValue) {
         try {
           const actualizadas = JSON.parse(e.newValue);
           if (Array.isArray(actualizadas)) {
@@ -1357,77 +1356,29 @@ export default function CRMApp() {
   }, [fichas, busquedaFichas, filtroObjetivoFichas]);
 
   const exportarTodasFichasExcel = () => {
-    const columnas = [
-      'ID',
-      'Fecha Registro',
-      'Alumna',
-      'Apodo',
-      'Email',
-      'WhatsApp',
-      'Sexo',
-      'Edad',
-      'Localidad / País',
-      'Estatura',
-      'Peso',
-      'Talla Remera',
-      'Alergias',
-      'Lesiones / Patologías',
-      'Medicamentos',
-      'COVID / Secuelas',
-      'Alcohol',
-      'Tabaco',
-      'Horas Sueño',
-      'Objetivo Principal',
-      'Motivo TotalHIIT',
-      'Actividad Actual',
-      'Deportes Favoritos',
-      'Estado Emocional',
-      'Contacto Emergencia',
-    ];
-    const filas = fichasFiltradas.map((f) => [
-      f.id,
-      f.fecha_registro,
-      f.nombre_completo,
-      f.apodo || '—',
-      f.email,
-      f.telefono_whatsapp,
-      f.sexo,
-      f.edad,
-      f.localidad_pais,
-      f.altura,
-      f.peso,
-      f.talla_remera,
-      f.alergias,
-      f.detalle_lesiones || f.problemas_musculares_oseos,
-      f.detalle_medicamentos || f.toma_medicamentos,
-      f.secuelas_covid || f.tuvo_covid,
-      f.consume_alcohol,
-      f.fuma,
-      f.horas_sueno,
-      f.objetivo_principal,
-      f.motivo_totalhiit || '—',
-      f.detalle_actividad_actual || f.actividad_fisica_actual,
-      f.deportes_favoritos || '—',
-      f.estado_emocional || '—',
-      f.contacto_emergencia,
-    ]);
-    exportarAExcel('TotalHIIT_Fichas_Alumnas', 'Padrón de Fichas Integrales de Salud & Entrenamiento', columnas, filas);
+    const filas = fichasFiltradas.map((f) => fichaAFila49(f));
+    exportarAExcel(
+      'TotalHIIT_Fichas_Alumnas_49_Campos_Google_Sheets',
+      'Padrón Oficial de Fichas Integrales de Salud & Entrenamiento (49 Columnas de Google Sheets)',
+      COLUMNAS_49_GOOGLE_SHEETS,
+      filas
+    );
   };
 
   const exportarTodasFichasPDF = () => {
     const columnas = ['Fecha', 'Alumna', 'Contacto', 'Ubicación', 'Contextura', 'Alergias / Lesiones', 'Objetivo'];
     const filas = fichasFiltradas.map((f) => [
-      f.fecha_registro.split(' ')[0],
-      f.nombre_completo,
+      (f.marca_temporal || f.fecha_registro).split(' ')[0],
+      f.nombre_completo || `${f.nombre} ${f.apellido}`.trim(),
       `${f.email} | ${f.telefono_whatsapp}`,
       f.localidad_pais,
       `${f.altura} / ${f.peso} (Talla ${f.talla_remera})`,
-      f.detalle_lesiones ? `${f.alergias} | ${f.detalle_lesiones}` : f.alergias,
+      f.detalle_lesiones || f.lesiones_desde_cuando ? `${f.alergias} | ${f.detalle_lesiones || f.lesiones_desde_cuando}` : f.alergias,
       f.objetivo_principal.includes('Corporal') ? 'Composición Corporal' : 'Salud Integral',
     ]);
     exportarAPDF(
       'Fichas Integrales de Salud & Entrenamiento TotalHIIT',
-      `Reporte con ${fichasFiltradas.length} fichas recibidas`,
+      `Reporte con ${fichasFiltradas.length} fichas oficiales recibidas (Google Sheets)`,
       columnas,
       filas,
       [
@@ -1439,33 +1390,62 @@ export default function CRMApp() {
   };
 
   const exportarFichaIndividualPDF = (ficha: FichaRegistro) => {
-    const columnas = ['Área / Pregunta', 'Respuesta Certificada'];
+    const columnas = ['Área / Pregunta Oficial', 'Respuesta Certificada (Google Forms)'];
     const filas: (string | number)[][] = [
-      ['Alumna / Atleta', ficha.nombre_completo],
-      ['Apodo Preferido', ficha.apodo || '—'],
-      ['Email', ficha.email],
-      ['WhatsApp', ficha.telefono_whatsapp],
-      ['Edad y Fecha Nac.', `${ficha.edad} años (${ficha.fecha_nacimiento})`],
-      ['Ubicación', ficha.localidad_pais],
-      ['Contacto de Emergencia', ficha.contacto_emergencia],
-      ['Medidas Corporales', `Altura: ${ficha.altura} | Peso: ${ficha.peso} | Talla: ${ficha.talla_remera}`],
-      ['Alergias', ficha.alergias],
-      ['Lesiones / Articulaciones', ficha.detalle_lesiones || (ficha.problemas_musculares_oseos === 'Sí' ? 'Sí' : 'Ninguna')],
-      ['Medicamentos', ficha.detalle_medicamentos || (ficha.toma_medicamentos === 'Sí' ? 'Sí' : 'Ninguno')],
-      ['COVID y Secuelas', ficha.secuelas_covid || (ficha.tuvo_covid === 'Sí' ? 'Tuvo COVID sin secuelas' : 'No')],
-      ['Hábitos (Alcohol / Tabaco)', `Alcohol: ${ficha.consume_alcohol} | Tabaco: ${ficha.fuma}`],
-      ['Horas de Sueño', ficha.horas_sueno],
-      ['Objetivo Principal', ficha.objetivo_principal],
-      ['Motivo de Ingreso', ficha.motivo_totalhiit || '—'],
-      ['Actividad Actual', ficha.detalle_actividad_actual || ficha.actividad_fisica_actual],
-      ['Deportes Favoritos', ficha.deportes_favoritos || '—'],
-      ['Estado Emocional', ficha.estado_emocional || '—'],
-      ['Compromiso con el Entrenamiento', ficha.compromiso_ayuda],
+      ['1. Marca temporal', ficha.marca_temporal || ficha.fecha_registro],
+      ['2. Correo electrónico', ficha.email],
+      ['3. Nombre', ficha.nombre || ficha.nombre_completo.split(' ')[0]],
+      ['4. Apellido', ficha.apellido || ficha.nombre_completo.split(' ').slice(1).join(' ')],
+      ['5. Sexo', ficha.sexo],
+      ['6. Apodo preferido', ficha.apodo || '—'],
+      ['7. Fecha de nacimiento', ficha.fecha_nacimiento],
+      ['8. Edad', `${ficha.edad} años`],
+      ['9. Dónde vives, localidad, País', ficha.localidad_pais],
+      ['10. Altura (Expresada en M)', ficha.altura],
+      ['11. Peso (Expresado en Kg)', ficha.peso],
+      ['12. Talla de Remera', ficha.talla_remera],
+      ['13. Alergias', ficha.alergias],
+      ['14. Embarazos?', ficha.embarazos],
+      ['15. Tienes hijos?', ficha.hijos],
+      ['16. ¿Tuviste Coronavirus?', ficha.tuvo_covid],
+      ['17. Secuelas de COVID / Problemas respiratorios', ficha.secuelas_covid || 'No refiere'],
+      ['18. Problema, patología o lesión muscular/articular/óseo', ficha.problemas_musculares_oseos],
+      ['19. ¿Desde cuándo? ¿Qué tienes?', ficha.lesiones_desde_cuando || ficha.detalle_lesiones || '—'],
+      ['20. ¿Estás realizando algún tratamiento que mejore tu condición?', ficha.tratamiento_actual || '—'],
+      ['21. ¿Tomas algún medicamento en el día a día?', ficha.toma_medicamentos],
+      ['22. ¿Cuál? ¿Cómo?', ficha.medicamentos_detalle || ficha.detalle_medicamentos || '—'],
+      ['23. ¿Tienes alguna discapacidad (motriz, auditiva, visual, verbal)?', ficha.discapacidad || 'Ninguna'],
+      ['24. Observaciones de utilidad', ficha.observaciones_medicas || '—'],
+      ['25. ¿Consumes bebidas alcohólicas?', ficha.consume_alcohol],
+      ['26. ¿Fumas?', ficha.fuma],
+      ['27. Frecuencia de fumar', ficha.frecuencia_fuma || '—'],
+      ['28. Suplementos deportivos, hormonas, anticonceptivos', ficha.suplementos_anticonceptivos || 'Ninguno'],
+      ['29. ¿Cómo llegaste a conocer a TOTALHIIT?', ficha.como_conocio_totalhiit || '—'],
+      ['30. Teléfono y/o Celular', ficha.telefono_whatsapp],
+      ['31. Sumar al grupo de WhatsApp', ficha.sumar_grupo_whatsapp],
+      ['32. Instagram (Nombre de usuario)', ficha.instagram || '—'],
+      ['33. Consentimiento fotos / grabaciones de clase', ficha.consentimiento_fotos],
+      ['34. Redes: Instagram @TOTALHIIT1', ficha.redes_instagram || '—'],
+      ['35. Redes: YouTube TOTALHIIT', ficha.redes_youtube || '—'],
+      ['36. Redes: Voy corriendo a Seguirlos', ficha.redes_voy_seguirlos || '—'],
+      ['37. Contacto de Emergencia', ficha.contacto_emergencia],
+      ['38. Objetivo principal', ficha.objetivo_principal],
+      ['39. ¿Por qué decidiste acceder a los servicios de TOTALHIIT?', ficha.motivo_totalhiit || '—'],
+      ['40. ¿Qué esperas recibir de nuestra parte?', ficha.expectativas || '—'],
+      ['41. ¿Realizas actividad física actualmente?', ficha.actividad_fisica_actual],
+      ['42. ¿Cuál o Cuáles actividades físicas?', ficha.detalle_actividad_actual || '—'],
+      ['43. 3 Deportes o disciplinas que más te gusten', ficha.deportes_favoritos || '—'],
+      ['44. Actividades que realizaste antes', ficha.actividades_previas || '—'],
+      ['45. Horas de sueño diarias', ficha.horas_sueno],
+      ['46. Cómo te sientes emocionalmente', ficha.estado_emocional || '—'],
+      ['47. ¿Asiste a terapia (tradicional o alternativa)?', ficha.asiste_terapia || '—'],
+      ['48. ¿Cuál o Cuáles terapias?', ficha.detalle_terapia || '—'],
+      ['49. Compromiso y disposición de recibir ayuda integral', ficha.compromiso_ayuda],
     ];
 
     exportarAPDF(
-      `Ficha Integral de Salud y Entrenamiento`,
-      `Alumna: ${ficha.nombre_completo} | Registrado: ${ficha.fecha_registro}`,
+      `Ficha Integral de Salud y Entrenamiento (49 Campos)`,
+      `Alumna: ${ficha.nombre_completo} | Registrado: ${ficha.marca_temporal || ficha.fecha_registro}`,
       columnas,
       filas,
       [
@@ -4978,92 +4958,211 @@ export default function CRMApp() {
               </button>
             </div>
 
-            {/* Contenido en 5 Secciones Detalladas */}
-            <div className="space-y-3">
-              {/* Sección 1: Datos Personales & Contacto */}
-              <div className="rounded-2xl border border-stone-200 bg-stone-50/70 p-3.5 space-y-1.5">
+            {/* Contenido en 10 Secciones Oficiales (49 Preguntas de Google Forms) */}
+            <div className="space-y-3.5 max-h-[70vh] overflow-y-auto pr-1">
+              {/* Sección 1: Datos Personales */}
+              <div className="rounded-2xl border border-stone-200 bg-stone-50/70 p-3.5 space-y-2">
                 <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider block">
-                  1. Datos Personales & Contacto
+                  1. Datos Personales & Identificación
                 </span>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-stone-700">
-                  <div><strong>Email:</strong> {fichaModal.email}</div>
-                  <div><strong>WhatsApp:</strong> {fichaModal.telefono_whatsapp}</div>
-                  <div><strong>Edad y Nacimiento:</strong> {fichaModal.edad} años ({fichaModal.fecha_nacimiento})</div>
+                  <div><strong>Correo Electrónico:</strong> {fichaModal.email}</div>
+                  <div><strong>Nombre y Apellido:</strong> {fichaModal.nombre || fichaModal.nombre_completo.split(' ')[0]} {fichaModal.apellido || fichaModal.nombre_completo.split(' ').slice(1).join(' ')}</div>
                   <div><strong>Sexo:</strong> {fichaModal.sexo}</div>
-                  <div><strong>Ubicación:</strong> {fichaModal.localidad_pais}</div>
-                  <div><strong>Instagram:</strong> {fichaModal.instagram || '—'}</div>
-                  <div className="sm:col-span-2">
-                    <strong>Contacto de Emergencia:</strong> {fichaModal.contacto_emergencia}
+                  <div><strong>Apodo preferido:</strong> {fichaModal.apodo || '—'}</div>
+                  <div><strong>Fecha de Nacimiento:</strong> {fichaModal.fecha_nacimiento}</div>
+                  <div><strong>Edad:</strong> {fichaModal.edad} años</div>
+                  <div className="sm:col-span-2"><strong>Dónde vives, localidad, País:</strong> {fichaModal.localidad_pais}</div>
+                  <div className="sm:col-span-2 text-[10px] text-stone-400 font-mono">
+                    Marca temporal original: {fichaModal.marca_temporal || fichaModal.fecha_registro}
                   </div>
-                  <div><strong>Consentimiento Fotos:</strong> {fichaModal.consentimiento_fotos}</div>
-                  <div><strong>Sumar a Grupo WhatsApp:</strong> {fichaModal.sumar_grupo_whatsapp}</div>
                 </div>
               </div>
 
               {/* Sección 2: Contextura Corporal */}
-              <div className="rounded-2xl border border-stone-200 bg-stone-50/70 p-3.5 space-y-1.5">
+              <div className="rounded-2xl border border-stone-200 bg-stone-50/70 p-3.5 space-y-2">
                 <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider block">
                   2. Contextura Corporal & Tallas
                 </span>
                 <div className="grid grid-cols-3 gap-2 text-stone-700">
-                  <div className="bg-white p-2 rounded-xl border border-stone-200 text-center">
-                    <span className="text-[10px] text-stone-400 block font-bold">ALTURA</span>
+                  <div className="bg-white p-2.5 rounded-xl border border-stone-200 text-center shadow-2xs">
+                    <span className="text-[10px] text-stone-400 block font-bold">ALTURA (M)</span>
                     <strong className="text-sm text-stone-900">{fichaModal.altura}</strong>
                   </div>
-                  <div className="bg-white p-2 rounded-xl border border-stone-200 text-center">
-                    <span className="text-[10px] text-stone-400 block font-bold">PESO</span>
+                  <div className="bg-white p-2.5 rounded-xl border border-stone-200 text-center shadow-2xs">
+                    <span className="text-[10px] text-stone-400 block font-bold">PESO (KG)</span>
                     <strong className="text-sm text-stone-900">{fichaModal.peso}</strong>
                   </div>
-                  <div className="bg-white p-2 rounded-xl border border-stone-200 text-center">
-                    <span className="text-[10px] text-stone-400 block font-bold">TALLA REMERA</span>
+                  <div className="bg-white p-2.5 rounded-xl border border-stone-200 text-center shadow-2xs">
+                    <span className="text-[10px] text-stone-400 block font-bold">TALLA DE REMERA</span>
                     <strong className="text-sm text-stone-900">Talla {fichaModal.talla_remera}</strong>
                   </div>
                 </div>
               </div>
 
-              {/* Sección 3: Datos Médicos */}
-              <div className="rounded-2xl border border-stone-200 bg-stone-50/70 p-3.5 space-y-1.5">
+              {/* Sección 3: Datos Médicos Generales */}
+              <div className="rounded-2xl border border-stone-200 bg-stone-50/70 p-3.5 space-y-2">
                 <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider block">
-                  3. Datos Médicos & Antecedentes Clínicos
+                  3. Datos Médicos & Embarazos
                 </span>
-                <div className="space-y-1 text-stone-700">
-                  <div><strong>Alergias:</strong> <span className={fichaModal.alergias !== 'Ninguna conocida' && fichaModal.alergias !== 'Ninguna indicada' ? 'text-red-700 font-bold' : ''}>{fichaModal.alergias}</span></div>
-                  <div><strong>Embarazos:</strong> {fichaModal.embarazos} • <strong>Hijos:</strong> {fichaModal.hijos}</div>
-                  <div><strong>COVID:</strong> {fichaModal.tuvo_covid} {fichaModal.secuelas_covid ? `(Secuelas: ${fichaModal.secuelas_covid})` : ''}</div>
-                  <div><strong>Lesiones / Musculares:</strong> {fichaModal.problemas_musculares_oseos} {fichaModal.detalle_lesiones ? `— ${fichaModal.detalle_lesiones}` : ''}</div>
-                  {fichaModal.tratamiento_actual && <div><strong>Tratamiento Actual:</strong> {fichaModal.tratamiento_actual}</div>}
-                  <div><strong>Medicamentos Diarios:</strong> {fichaModal.toma_medicamentos} {fichaModal.detalle_medicamentos ? `— ${fichaModal.detalle_medicamentos}` : ''}</div>
-                  <div><strong>Discapacidad:</strong> {fichaModal.discapacidad || 'Ninguna'}</div>
-                  {fichaModal.observaciones_medicas && <div><strong>Observaciones Médicas:</strong> {fichaModal.observaciones_medicas}</div>}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-stone-700">
+                  <div><strong>Embarazos?:</strong> {fichaModal.embarazos}</div>
+                  <div><strong>Tienes hijos?:</strong> {fichaModal.hijos}</div>
+                  <div className="sm:col-span-3">
+                    <strong>Alergias:</strong>{' '}
+                    <span className={fichaModal.alergias !== 'Ninguna conocida' && fichaModal.alergias !== 'Ninguna indicada' && fichaModal.alergias !== 'Ninguna' ? 'text-red-700 font-bold' : ''}>
+                      {fichaModal.alergias}
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              {/* Sección 4: Hábitos & Sueño */}
-              <div className="rounded-2xl border border-stone-200 bg-stone-50/70 p-3.5 space-y-1.5">
+              {/* Sección 4: Enfermedades y Patologías */}
+              <div className="rounded-2xl border border-stone-200 bg-stone-50/70 p-3.5 space-y-2">
                 <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider block">
-                  4. Hábitos, Suplementación & Sueño
+                  4. Enfermedades, Patologías & Antecedentes Clínicos
+                </span>
+                <div className="space-y-1.5 text-stone-700">
+                  <div>
+                    <strong>¿Tuviste Coronavirus?:</strong> {fichaModal.tuvo_covid}
+                    {fichaModal.secuelas_covid && <span className="text-amber-800 ml-1">— Secuelas: {fichaModal.secuelas_covid}</span>}
+                  </div>
+                  <div>
+                    <strong>Problema articular/muscular/óseo:</strong> {fichaModal.problemas_musculares_oseos}
+                    {(fichaModal.lesiones_desde_cuando || fichaModal.detalle_lesiones) && (
+                      <span className="text-stone-800 block text-[11px] mt-0.5 ml-2">
+                        ↳ ¿Desde cuándo? ¿Qué tienes?: {fichaModal.lesiones_desde_cuando || fichaModal.detalle_lesiones}
+                      </span>
+                    )}
+                  </div>
+                  {fichaModal.tratamiento_actual && (
+                    <div><strong>Tratamiento actual:</strong> {fichaModal.tratamiento_actual}</div>
+                  )}
+                  <div>
+                    <strong>Toma medicamentos diarios:</strong> {fichaModal.toma_medicamentos}
+                    {(fichaModal.medicamentos_detalle || fichaModal.detalle_medicamentos) && (
+                      <span className="text-stone-800 ml-1">
+                        ({fichaModal.medicamentos_detalle || fichaModal.detalle_medicamentos})
+                      </span>
+                    )}
+                  </div>
+                  <div><strong>Discapacidad (motriz/auditiva/visual/verbal):</strong> {fichaModal.discapacidad || 'Ninguna'}</div>
+                  {fichaModal.observaciones_medicas && (
+                    <div><strong>Observaciones de utilidad:</strong> {fichaModal.observaciones_medicas}</div>
+                  )}
+                </div>
+              </div>
+
+              {/* Sección 5: Sustancias y Suplementos */}
+              <div className="rounded-2xl border border-stone-200 bg-stone-50/70 p-3.5 space-y-2">
+                <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider block">
+                  5. Hábitos, Sustancias & Suplementación
                 </span>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-stone-700">
-                  <div><strong>Alcohol:</strong> {fichaModal.consume_alcohol}</div>
-                  <div><strong>Tabaco:</strong> {fichaModal.fuma} {fichaModal.frecuencia_fuma ? `(${fichaModal.frecuencia_fuma})` : ''}</div>
-                  <div><strong>Suplementos / Hormonas:</strong> {fichaModal.suplementos_anticonceptivos || 'Ninguno'}</div>
-                  <div><strong>Horas de Sueño:</strong> {fichaModal.horas_sueno}</div>
+                  <div><strong>¿Consumes alcohol?:</strong> {fichaModal.consume_alcohol}</div>
+                  <div>
+                    <strong>¿Fumas?:</strong> {fichaModal.fuma}{' '}
+                    {fichaModal.frecuencia_fuma ? `(Frecuencia: ${fichaModal.frecuencia_fuma})` : ''}
+                  </div>
+                  <div className="sm:col-span-2">
+                    <strong>Suplementos / Hormonas / Anticonceptivos:</strong> {fichaModal.suplementos_anticonceptivos || 'Ninguno'}
+                  </div>
                 </div>
               </div>
 
-              {/* Sección 5: Objetivos & Metas */}
-              <div className="rounded-2xl border border-rose-200 bg-rose-50/50 p-3.5 space-y-1.5">
-                <span className="text-[10px] font-bold text-rose-800 uppercase tracking-wider block">
-                  5. Objetivos, Metas & Historia Deportiva
+              {/* Sección 6: Medios de Comunicación y Redes */}
+              <div className="rounded-2xl border border-stone-200 bg-stone-50/70 p-3.5 space-y-2">
+                <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider block">
+                  6. Medios de Comunicación & Redes Sociales
                 </span>
-                <div className="space-y-1 text-stone-800">
-                  <div><strong>Objetivo Principal:</strong> <span className="font-bold text-rose-700">{fichaModal.objetivo_principal}</span></div>
-                  {fichaModal.motivo_totalhiit && <div><strong>¿Por qué TotalHIIT?:</strong> {fichaModal.motivo_totalhiit}</div>}
-                  {fichaModal.expectativas && <div><strong>Expectativas:</strong> {fichaModal.expectativas}</div>}
-                  <div><strong>Actividad Actual:</strong> {fichaModal.detalle_actividad_actual || fichaModal.actividad_fisica_actual}</div>
-                  {fichaModal.deportes_favoritos && <div><strong>Deportes Favoritos:</strong> {fichaModal.deportes_favoritos}</div>}
-                  {fichaModal.estado_emocional && <div><strong>Estado Emocional:</strong> {fichaModal.estado_emocional}</div>}
-                  <div><strong>Compromiso y Buena Disposición:</strong> <span className="font-bold text-emerald-700">{fichaModal.compromiso_ayuda}</span></div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-stone-700">
+                  <div><strong>¿Cómo conoció TotalHIIT?:</strong> {fichaModal.como_conocio_totalhiit || '—'}</div>
+                  <div><strong>Teléfono / WhatsApp:</strong> {fichaModal.telefono_whatsapp}</div>
+                  <div><strong>Sumar a Grupo de WhatsApp:</strong> {fichaModal.sumar_grupo_whatsapp}</div>
+                  <div><strong>Instagram de la Alumna:</strong> {fichaModal.instagram || '—'}</div>
+                  <div className="sm:col-span-2">
+                    <strong>Consentimiento fotos / grabaciones de clases:</strong> {fichaModal.consentimiento_fotos}
+                  </div>
+                  <div className="sm:col-span-2 rounded-xl border border-stone-200 bg-white p-2">
+                    <span className="text-[10px] font-bold text-stone-400 uppercase block mb-1">
+                      Seguimiento en Redes de TOTALHIIT:
+                    </span>
+                    <div className="grid grid-cols-3 gap-1 text-[11px]">
+                      <div>📸 IG: <span className="font-semibold">{fichaModal.redes_instagram || '—'}</span></div>
+                      <div>🎥 YT: <span className="font-semibold">{fichaModal.redes_youtube || '—'}</span></div>
+                      <div>🏃 Seguirlos: <span className="font-semibold">{fichaModal.redes_voy_seguirlos || '—'}</span></div>
+                    </div>
+                  </div>
+                  <div className="sm:col-span-2 rounded-xl bg-amber-50/70 border border-amber-200 p-2">
+                    <strong className="text-amber-900 block text-[10px] uppercase">Contacto de Emergencia:</strong>
+                    <span className="text-amber-950 font-medium">{fichaModal.contacto_emergencia}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Sección 7: Objetivos y Metas */}
+              <div className="rounded-2xl border border-rose-200 bg-rose-50/50 p-3.5 space-y-2">
+                <span className="text-[10px] font-bold text-rose-800 uppercase tracking-wider block">
+                  7. Objetivos & Metas
+                </span>
+                <div className="space-y-1.5 text-stone-800">
+                  <div>
+                    <strong>Objetivo Principal:</strong>{' '}
+                    <span className="font-bold text-rose-700">{fichaModal.objetivo_principal}</span>
+                  </div>
+                  {fichaModal.motivo_totalhiit && (
+                    <div><strong>¿Por qué decidiste TOTALHIIT?:</strong> {fichaModal.motivo_totalhiit}</div>
+                  )}
+                  {fichaModal.expectativas && (
+                    <div><strong>¿Qué esperas recibir de TotalHIIT?:</strong> {fichaModal.expectativas}</div>
+                  )}
+                </div>
+              </div>
+
+              {/* Sección 8: Historia & Actividad Física */}
+              <div className="rounded-2xl border border-stone-200 bg-stone-50/70 p-3.5 space-y-2">
+                <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider block">
+                  8. Historia & Actividad Física
+                </span>
+                <div className="space-y-1.5 text-stone-700">
+                  <div>
+                    <strong>¿Realiza actividad física actualmente?:</strong> {fichaModal.actividad_fisica_actual}
+                    {fichaModal.detalle_actividad_actual && ` — ${fichaModal.detalle_actividad_actual}`}
+                  </div>
+                  {fichaModal.deportes_favoritos && (
+                    <div><strong>3 Deportes o actividades favoritas:</strong> {fichaModal.deportes_favoritos}</div>
+                  )}
+                  {fichaModal.actividades_previas && (
+                    <div><strong>Actividades que realizaste antes:</strong> {fichaModal.actividades_previas}</div>
+                  )}
+                  <div><strong>Horas aproximadas de sueño diario:</strong> {fichaModal.horas_sueno}</div>
+                </div>
+              </div>
+
+              {/* Sección 9: Estado Emocional & Salud Mental */}
+              <div className="rounded-2xl border border-stone-200 bg-stone-50/70 p-3.5 space-y-2">
+                <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider block">
+                  9. Estado Emocional & Terapia
+                </span>
+                <div className="space-y-1.5 text-stone-700">
+                  <div><strong>¿Cómo te sientes emocionalmente?:</strong> {fichaModal.estado_emocional || '—'}</div>
+                  <div>
+                    <strong>¿Asiste a terapia (tradicional o alternativa)?:</strong> {fichaModal.asiste_terapia || '—'}
+                    {fichaModal.detalle_terapia && ` (${fichaModal.detalle_terapia})`}
+                  </div>
+                </div>
+              </div>
+
+              {/* Sección 10: Importante & Compromiso */}
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-3.5 space-y-1.5">
+                <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider block">
+                  10. Compromiso & Disposición de Mejora
+                </span>
+                <div className="text-stone-800">
+                  <strong>¿Dispuesto/a a recibir nuestra ayuda para mejorar su salud de forma integral y divertida?:</strong>{' '}
+                  <span className="font-extrabold text-emerald-700 text-xs uppercase ml-1">
+                    ✓ {fichaModal.compromiso_ayuda}
+                  </span>
                 </div>
               </div>
             </div>

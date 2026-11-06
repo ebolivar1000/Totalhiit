@@ -1,27 +1,35 @@
+// ==============================================================================
+// FORMULARIO INTEGRAL DE REGISTRO DE ALUMNAS TOTALHIIT
+// Basado en el Formulario Oficial de Google Forms y Hoja de Cálculo (49 Columnas)
+// ==============================================================================
+
 import React, { useState, useEffect } from 'react';
 import {
-  Activity,
   AlertCircle,
+  ArrowLeft,
   CheckCircle2,
   ChevronDown,
   ChevronRight,
   FileSpreadsheet,
+  FileText,
   Heart,
   Lock,
-  MessageCircle,
-  Printer,
-  RotateCcw,
-  Send,
+  Save,
   ShieldCheck,
   Sparkles,
   User,
 } from 'lucide-react';
-import { FichaRegistro, FICHAS_INICIALES } from '../tiposFicha';
+import {
+  FichaRegistro,
+  FICHAS_INICIALES,
+  COLUMNAS_49_GOOGLE_SHEETS,
+  fichaAFila49,
+} from '../tiposFicha';
 import { exportarAExcel, exportarAPDF } from '../exportador';
 
-const STORAGE_FICHAS = 'totalhiit_crm_fichas_registro';
-const STORAGE_DRAFT = 'totalhiit_crm_registro_draft';
-const STORAGE_FINALIZADA_ID = 'totalhiit_mi_ficha_id';
+const STORAGE_FICHAS = 'totalhiit_crm_fichas_registro_v4';
+const STORAGE_DRAFT = 'totalhiit_crm_registro_draft_v4';
+const STORAGE_FINALIZADA_ID = 'totalhiit_mi_ficha_id_v4';
 
 interface Props {
   onVolverAdmin?: () => void;
@@ -32,7 +40,11 @@ export default function FormularioRegistro({ onVolverAdmin, esAdmin }: Props) {
   // Estado de Ficha ya finalizada (Bloqueo)
   const [fichaFinalizada, setFichaFinalizada] = useState<FichaRegistro | null>(null);
 
-  // Estados de Formulario
+  // ============================================================================
+  // ESTADOS DEL FORMULARIO - 49 COLUMNAS OFICIALES
+  // ============================================================================
+
+  // 1. Datos Personales
   const [email, setEmail] = useState('');
   const [nombre, setNombre] = useState('');
   const [apellido, setApellido] = useState('');
@@ -41,52 +53,66 @@ export default function FormularioRegistro({ onVolverAdmin, esAdmin }: Props) {
   const [fechaNacimiento, setFechaNacimiento] = useState('');
   const [edad, setEdad] = useState<number>(35);
   const [localidadPais, setLocalidadPais] = useState('');
-  const [telefonoWhatsapp, setTelefonoWhatsapp] = useState('');
-  const [instagram, setInstagram] = useState('');
-  const [contactoEmergencia, setContactoEmergencia] = useState('');
-  const [consentimientoFotos, setConsentimientoFotos] = useState<'Sí' | 'No'>('Sí');
-  const [sumarGrupoWhatsapp, setSumarGrupoWhatsapp] = useState<'Sí' | 'No'>('Sí');
 
-  // Contextura Corporal
+  // 2. Contextura Corporal
   const [altura, setAltura] = useState('1.65M');
   const [peso, setPeso] = useState('65.0Kg');
   const [tallaRemera, setTallaRemera] = useState<'S' | 'M' | 'L' | 'XL'>('M');
 
-  // Datos Médicos
+  // 3. Datos Médicos
   const [alergias, setAlergias] = useState('');
-  const [embarazos, setEmbarazos] = useState<'Sí' | 'No'>('No');
-  const [hijos, setHijos] = useState<'Sí' | 'No' | 'No pienso tener'>('No');
-  const [tuvoCovid, setTuvoCovid] = useState<'Sí' | 'No'>('No');
+  const [embarazos, setEmbarazos] = useState<'si' | 'no'>('no');
+  const [hijos, setHijos] = useState<'Si' | 'No' | 'No pienso tener'>('No');
+
+  // 4. Enfermedades y Patologías
+  const [tuvoCovid, setTuvoCovid] = useState<'Si' | 'no'>('no');
   const [secuelasCovid, setSecuelasCovid] = useState('');
-  const [problemasMusculares, setProblemasMusculares] = useState<'Sí' | 'No'>('No');
-  const [detalleLesiones, setDetalleLesiones] = useState('');
+  const [problemasMusculares, setProblemasMusculares] = useState<'Si' | 'no'>('no');
+  const [lesionesDesdeCuando, setLesionesDesdeCuando] = useState('');
   const [tratamientoActual, setTratamientoActual] = useState('');
-  const [tomaMedicamentos, setTomaMedicamentos] = useState<'Sí' | 'No'>('No');
-  const [detalleMedicamentos, setDetalleMedicamentos] = useState('');
+  const [tomaMedicamentos, setTomaMedicamentos] = useState<'Si' | 'No'>('No');
+  const [medicamentosDetalle, setMedicamentosDetalle] = useState('');
   const [discapacidad, setDiscapacidad] = useState('');
   const [observacionesMedicas, setObservacionesMedicas] = useState('');
 
-  // Hábitos
-  const [consumeAlcohol, setConsumeAlcohol] = useState<'Sí' | 'No' | 'Algunas veces y poca cantidad'>('Algunas veces y poca cantidad');
-  const [fuma, setFuma] = useState<'Sí' | 'No'>('No');
+  // 5. Sustancias, Suplementos o Medicamentos
+  const [consumeAlcohol, setConsumeAlcohol] = useState<'Si' | 'No' | 'Algunas veces y poca cantidad'>('Algunas veces y poca cantidad');
+  const [fuma, setFuma] = useState<'Si' | 'No'>('No');
   const [frecuenciaFuma, setFrecuenciaFuma] = useState('');
   const [suplementosAnticonceptivos, setSuplementosAnticonceptivos] = useState('');
-  const [horasSueno, setHorasSueno] = useState('7 - 8 horas');
 
-  // Objetivos & Metas
+  // 6. Medios de Comunicación y Redes Sociales
+  const [comoConocioTotalhiit, setComoConocioTotalhiit] = useState('');
+  const [telefonoWhatsapp, setTelefonoWhatsapp] = useState('');
+  const [sumarGrupoWhatsapp, setSumarGrupoWhatsapp] = useState<'Sí' | 'No'>('Sí');
+  const [instagram, setInstagram] = useState('');
+  const [consentimientoFotos, setConsentimientoFotos] = useState<'si' | 'No'>('si');
+  const [redesInstagram, setRedesInstagram] = useState('Instagram @TOTALHIIT1');
+  const [redesYoutube, setRedesYoutube] = useState('YouTube TOTALHIIT ENTRENAMIENTO FUNCIONAL');
+  const [redesVoySeguirlos, setRedesVoySeguirlos] = useState('Voy corriendo a Seguirlos');
+  const [contactoEmergencia, setContactoEmergencia] = useState('');
+
+  // 7. Objetivos y Metas
   const [objetivoPrincipal, setObjetivoPrincipal] = useState<
     'Corporal: Bajar grasa y aumentar masa muscular' | 'Mejorar tu salud de manera integral'
   >('Corporal: Bajar grasa y aumentar masa muscular');
   const [motivoTotalhiit, setMotivoTotalhiit] = useState('');
   const [expectativas, setExpectativas] = useState('');
-  const [actividadFisicaActual, setActividadFisicaActual] = useState<'Sí' | 'No'>('Sí');
+
+  // 8. ¡¡Tu Historia!! (Actividad Física)
+  const [actividadFisicaActual, setActividadFisicaActual] = useState<'Si' | 'No'>('Si');
   const [detalleActividadActual, setDetalleActividadActual] = useState('');
   const [deportesFavoritos, setDeportesFavoritos] = useState('');
   const [actividadesPrevias, setActividadesPrevias] = useState('');
+  const [horasSueno, setHorasSueno] = useState('7 - 8 horas');
+
+  // 9. Cómo estás Emocionalmente
   const [estadoEmocional, setEstadoEmocional] = useState('');
   const [asisteTerapia, setAsisteTerapia] = useState('');
   const [detalleTerapia, setDetalleTerapia] = useState('');
-  const [compromisoAyuda, setCompromisoAyuda] = useState<'Sí' | 'No' | 'Por supuesto'>('Por supuesto');
+
+  // 10. Importante & Compromiso
+  const [compromisoAyuda, setCompromisoAyuda] = useState<'Si' | 'No' | 'Porsupuesto'>('Porsupuesto');
 
   // UI state
   const [seccionAbierta, setSeccionAbierta] = useState<number>(1);
@@ -123,9 +149,6 @@ export default function FormularioRegistro({ onVolverAdmin, esAdmin }: Props) {
         if (d.fechaNacimiento) setFechaNacimiento(d.fechaNacimiento);
         if (d.edad) setEdad(d.edad);
         if (d.localidadPais) setLocalidadPais(d.localidadPais);
-        if (d.telefonoWhatsapp) setTelefonoWhatsapp(d.telefonoWhatsapp);
-        if (d.instagram) setInstagram(d.instagram);
-        if (d.contactoEmergencia) setContactoEmergencia(d.contactoEmergencia);
         if (d.altura) setAltura(d.altura);
         if (d.peso) setPeso(d.peso);
         if (d.tallaRemera) setTallaRemera(d.tallaRemera);
@@ -135,17 +158,25 @@ export default function FormularioRegistro({ onVolverAdmin, esAdmin }: Props) {
         if (d.tuvoCovid) setTuvoCovid(d.tuvoCovid);
         if (d.secuelasCovid) setSecuelasCovid(d.secuelasCovid);
         if (d.problemasMusculares) setProblemasMusculares(d.problemasMusculares);
-        if (d.detalleLesiones) setDetalleLesiones(d.detalleLesiones);
+        if (d.lesionesDesdeCuando) setLesionesDesdeCuando(d.lesionesDesdeCuando);
         if (d.tratamientoActual) setTratamientoActual(d.tratamientoActual);
         if (d.tomaMedicamentos) setTomaMedicamentos(d.tomaMedicamentos);
-        if (d.detalleMedicamentos) setDetalleMedicamentos(d.detalleMedicamentos);
+        if (d.medicamentosDetalle) setMedicamentosDetalle(d.medicamentosDetalle);
         if (d.discapacidad) setDiscapacidad(d.discapacidad);
         if (d.observacionesMedicas) setObservacionesMedicas(d.observacionesMedicas);
         if (d.consumeAlcohol) setConsumeAlcohol(d.consumeAlcohol);
         if (d.fuma) setFuma(d.fuma);
         if (d.frecuenciaFuma) setFrecuenciaFuma(d.frecuenciaFuma);
         if (d.suplementosAnticonceptivos) setSuplementosAnticonceptivos(d.suplementosAnticonceptivos);
-        if (d.horasSueno) setHorasSueno(d.horasSueno);
+        if (d.comoConocioTotalhiit) setComoConocioTotalhiit(d.comoConocioTotalhiit);
+        if (d.telefonoWhatsapp) setTelefonoWhatsapp(d.telefonoWhatsapp);
+        if (d.sumarGrupoWhatsapp) setSumarGrupoWhatsapp(d.sumarGrupoWhatsapp);
+        if (d.instagram) setInstagram(d.instagram);
+        if (d.consentimientoFotos) setConsentimientoFotos(d.consentimientoFotos);
+        if (d.redesInstagram) setRedesInstagram(d.redesInstagram);
+        if (d.redesYoutube) setRedesYoutube(d.redesYoutube);
+        if (d.redesVoySeguirlos) setRedesVoySeguirlos(d.redesVoySeguirlos);
+        if (d.contactoEmergencia) setContactoEmergencia(d.contactoEmergencia);
         if (d.objetivoPrincipal) setObjetivoPrincipal(d.objetivoPrincipal);
         if (d.motivoTotalhiit) setMotivoTotalhiit(d.motivoTotalhiit);
         if (d.expectativas) setExpectativas(d.expectativas);
@@ -153,6 +184,7 @@ export default function FormularioRegistro({ onVolverAdmin, esAdmin }: Props) {
         if (d.detalleActividadActual) setDetalleActividadActual(d.detalleActividadActual);
         if (d.deportesFavoritos) setDeportesFavoritos(d.deportesFavoritos);
         if (d.actividadesPrevias) setActividadesPrevias(d.actividadesPrevias);
+        if (d.horasSueno) setHorasSueno(d.horasSueno);
         if (d.estadoEmocional) setEstadoEmocional(d.estadoEmocional);
         if (d.asisteTerapia) setAsisteTerapia(d.asisteTerapia);
         if (d.detalleTerapia) setDetalleTerapia(d.detalleTerapia);
@@ -161,9 +193,9 @@ export default function FormularioRegistro({ onVolverAdmin, esAdmin }: Props) {
     }
   }, [esAdmin]);
 
-  // Auto-guardado de borrador
+  // Guardado automático de borrador
   const guardarBorrador = () => {
-    const d = {
+    const draftData = {
       email,
       nombre,
       apellido,
@@ -172,9 +204,6 @@ export default function FormularioRegistro({ onVolverAdmin, esAdmin }: Props) {
       fechaNacimiento,
       edad,
       localidadPais,
-      telefonoWhatsapp,
-      instagram,
-      contactoEmergencia,
       altura,
       peso,
       tallaRemera,
@@ -184,17 +213,25 @@ export default function FormularioRegistro({ onVolverAdmin, esAdmin }: Props) {
       tuvoCovid,
       secuelasCovid,
       problemasMusculares,
-      detalleLesiones,
+      lesionesDesdeCuando,
       tratamientoActual,
       tomaMedicamentos,
-      detalleMedicamentos,
+      medicamentosDetalle,
       discapacidad,
       observacionesMedicas,
       consumeAlcohol,
       fuma,
       frecuenciaFuma,
       suplementosAnticonceptivos,
-      horasSueno,
+      comoConocioTotalhiit,
+      telefonoWhatsapp,
+      sumarGrupoWhatsapp,
+      instagram,
+      consentimientoFotos,
+      redesInstagram,
+      redesYoutube,
+      redesVoySeguirlos,
+      contactoEmergencia,
       objetivoPrincipal,
       motivoTotalhiit,
       expectativas,
@@ -202,41 +239,28 @@ export default function FormularioRegistro({ onVolverAdmin, esAdmin }: Props) {
       detalleActividadActual,
       deportesFavoritos,
       actividadesPrevias,
+      horasSueno,
       estadoEmocional,
       asisteTerapia,
       detalleTerapia,
       compromisoAyuda,
     };
-    localStorage.setItem(STORAGE_DRAFT, JSON.stringify(d));
+    localStorage.setItem(STORAGE_DRAFT, JSON.stringify(draftData));
     setMensajeGuardado(true);
-    setTimeout(() => setMensajeGuardado(false), 2500);
+    setTimeout(() => setMensajeGuardado(false), 2000);
   };
 
-  // Finalizar Registro
-  const handleFinalizar = (e: React.FormEvent) => {
+  // Finalizar Registro (Bloqueo Definitivo y Almacenamiento en BD)
+  const finalizarRegistro = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorValidacion('');
 
-    if (!nombre.trim() || !apellido.trim()) {
-      setErrorValidacion('Por favor ingresa tu Nombre y Apellido.');
+    if (!email.trim() || !nombre.trim() || !apellido.trim() || !telefonoWhatsapp.trim()) {
+      setErrorValidacion('Por favor completa los campos obligatorios: Nombre, Apellido, Email y WhatsApp.');
       setSeccionAbierta(1);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
-    if (!email.trim() || !email.includes('@')) {
-      setErrorValidacion('Por favor ingresa un correo electrónico válido.');
-      setSeccionAbierta(1);
-      return;
-    }
-    if (!telefonoWhatsapp.trim()) {
-      setErrorValidacion('Por favor ingresa tu número de WhatsApp para contactarte.');
-      setSeccionAbierta(1);
-      return;
-    }
-
-    const confirma = window.confirm(
-      '¿Deseas finalizar tu registro ahora? Una vez enviado, tus datos quedarán guardados de forma segura en TOTALHIIT y por seguridad médica no podrán ser alterados nuevamente.'
-    );
-    if (!confirma) return;
 
     const nuevaFicha: FichaRegistro = {
       id: `ficha-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
@@ -249,13 +273,8 @@ export default function FormularioRegistro({ onVolverAdmin, esAdmin }: Props) {
       sexo,
       apodo: apodo.trim() || undefined,
       fecha_nacimiento: fechaNacimiento || 'No indicada',
-      edad: Number(edad) || 30,
+      edad: Number(edad) || 35,
       localidad_pais: localidadPais.trim() || 'No indicada',
-      telefono_whatsapp: telefonoWhatsapp.trim(),
-      instagram: instagram.trim() || undefined,
-      contacto_emergencia: contactoEmergencia.trim() || 'No especificado',
-      consentimiento_fotos: consentimientoFotos,
-      sumar_grupo_whatsapp: sumarGrupoWhatsapp,
       altura: altura.trim() || '1.65M',
       peso: peso.trim() || '65.0Kg',
       talla_remera: tallaRemera,
@@ -265,17 +284,25 @@ export default function FormularioRegistro({ onVolverAdmin, esAdmin }: Props) {
       tuvo_covid: tuvoCovid,
       secuelas_covid: secuelasCovid.trim() || undefined,
       problemas_musculares_oseos: problemasMusculares,
-      detalle_lesiones: detalleLesiones.trim() || undefined,
+      lesiones_desde_cuando: lesionesDesdeCuando.trim() || undefined,
       tratamiento_actual: tratamientoActual.trim() || undefined,
       toma_medicamentos: tomaMedicamentos,
-      detalle_medicamentos: detalleMedicamentos.trim() || undefined,
+      medicamentos_detalle: medicamentosDetalle.trim() || undefined,
       discapacidad: discapacidad.trim() || 'Ninguna',
       observaciones_medicas: observacionesMedicas.trim() || undefined,
       consume_alcohol: consumeAlcohol,
       fuma,
       frecuencia_fuma: frecuenciaFuma.trim() || undefined,
       suplementos_anticonceptivos: suplementosAnticonceptivos.trim() || undefined,
-      horas_sueno: horasSueno || '8 horas',
+      como_conocio_totalhiit: comoConocioTotalhiit.trim() || 'Redes Sociales',
+      telefono_whatsapp: telefonoWhatsapp.trim(),
+      sumar_grupo_whatsapp: sumarGrupoWhatsapp,
+      instagram: instagram.trim() || undefined,
+      consentimiento_fotos: consentimientoFotos,
+      redes_instagram: redesInstagram,
+      redes_youtube: redesYoutube,
+      redes_voy_seguirlos: redesVoySeguirlos,
+      contacto_emergencia: contactoEmergencia.trim() || 'No especificado',
       objetivo_principal: objetivoPrincipal,
       motivo_totalhiit: motivoTotalhiit.trim() || undefined,
       expectativas: expectativas.trim() || undefined,
@@ -283,6 +310,7 @@ export default function FormularioRegistro({ onVolverAdmin, esAdmin }: Props) {
       detalle_actividad_actual: detalleActividadActual.trim() || undefined,
       deportes_favoritos: deportesFavoritos.trim() || undefined,
       actividades_previas: actividadesPrevias.trim() || undefined,
+      horas_sueno: horasSueno || '8 horas',
       estado_emocional: estadoEmocional.trim() || undefined,
       asiste_terapia: asisteTerapia.trim() || undefined,
       detalle_terapia: detalleTerapia.trim() || undefined,
@@ -303,874 +331,633 @@ export default function FormularioRegistro({ onVolverAdmin, esAdmin }: Props) {
 
     const actualizada = [nuevaFicha, ...listaActual.filter((x) => x.id !== nuevaFicha.id)];
     localStorage.setItem(STORAGE_FICHAS, JSON.stringify(actualizada));
-    localStorage.setItem('totalhiit_crm_fichas_registro_v3', JSON.stringify(actualizada));
+    localStorage.setItem('totalhiit_crm_fichas_registro', JSON.stringify(actualizada));
     localStorage.removeItem(STORAGE_DRAFT);
     localStorage.setItem(STORAGE_FINALIZADA_ID, nuevaFicha.id);
 
     // Bloquear formulario y mostrar vista de confirmación
     setFichaFinalizada(nuevaFicha);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Exportar Ficha a Excel
+  // Exportar Ficha a Excel (49 Columnas idénticas a Google Sheets)
   const exportarMiFichaExcel = (ficha: FichaRegistro) => {
-    const columnas = ['Campo', 'Respuesta Registrada'];
-    const filas: (string | number)[][] = [
-      ['ID de Registro', ficha.id],
-      ['Fecha y Hora', ficha.fecha_registro],
-      ['Nombre Completo', ficha.nombre_completo],
-      ['Apodo Preferido', ficha.apodo || '—'],
-      ['Correo Electrónico', ficha.email],
-      ['WhatsApp / Teléfono', ficha.telefono_whatsapp],
-      ['Sexo', ficha.sexo],
-      ['Edad', ficha.edad],
-      ['Fecha de Nacimiento', ficha.fecha_nacimiento],
-      ['Localidad y País', ficha.localidad_pais],
-      ['Instagram', ficha.instagram || '—'],
-      ['Contacto de Emergencia', ficha.contacto_emergencia],
-      ['Consentimiento Fotos/Videos', ficha.consentimiento_fotos],
-      ['Sumar al Grupo WhatsApp', ficha.sumar_grupo_whatsapp],
-      ['Altura', ficha.altura],
-      ['Peso', ficha.peso],
-      ['Talla de Remera', ficha.talla_remera],
-      ['Alergias', ficha.alergias],
-      ['¿Embarazos?', ficha.embarazos],
-      ['¿Hijos?', ficha.hijos],
-      ['¿Tuvo Coronavirus?', ficha.tuvo_covid],
-      ['Secuelas COVID', ficha.secuelas_covid || '—'],
-      ['Problemas Musculares / Lesiones', ficha.problemas_musculares_oseos],
-      ['Detalle de Lesiones', ficha.detalle_lesiones || '—'],
-      ['Tratamiento Actual', ficha.tratamiento_actual || '—'],
-      ['¿Toma Medicamentos?', ficha.toma_medicamentos],
-      ['Detalle Medicamentos', ficha.detalle_medicamentos || '—'],
-      ['Discapacidad', ficha.discapacidad || '—'],
-      ['Observaciones Médicas', ficha.observaciones_medicas || '—'],
-      ['Consumo de Alcohol', ficha.consume_alcohol],
-      ['¿Fuma?', ficha.fuma],
-      ['Frecuencia de Fumar', ficha.frecuencia_fuma || '—'],
-      ['Suplementos / Anticonceptivos', ficha.suplementos_anticonceptivos || '—'],
-      ['Horas de Sueño', ficha.horas_sueno],
-      ['Objetivo Principal', ficha.objetivo_principal],
-      ['¿Por qué TotalHIIT?', ficha.motivo_totalhiit || '—'],
-      ['Expectativas', ficha.expectativas || '—'],
-      ['¿Actividad Física Actual?', ficha.actividad_fisica_actual],
-      ['Detalle Actividad Actual', ficha.detalle_actividad_actual || '—'],
-      ['Deportes Favoritos', ficha.deportes_favoritos || '—'],
-      ['Actividades Previas', ficha.actividades_previas || '—'],
-      ['Estado Emocional', ficha.estado_emocional || '—'],
-      ['¿Asiste a Terapia?', ficha.asiste_terapia || '—'],
-      ['Compromiso y Buena Disposición', ficha.compromiso_ayuda],
-    ];
-
+    const fila = fichaAFila49(ficha);
     exportarAExcel(
-      `Ficha_TotalHIIT_${ficha.nombre.replace(/\s+/g, '_')}`,
-      `Ficha Integral de ${ficha.nombre_completo}`,
-      columnas,
-      filas
+      `Ficha_TotalHIIT_${ficha.nombre.replace(/\s+/g, '_')}_49_Campos`,
+      `Ficha Oficial de ${ficha.nombre_completo}`,
+      COLUMNAS_49_GOOGLE_SHEETS,
+      [fila]
     );
   };
 
   // Exportar Ficha a PDF
   const exportarMiFichaPDF = (ficha: FichaRegistro) => {
-    const columnas = ['Área / Pregunta', 'Respuesta Certificada'];
+    const columnas = ['N° Pregunta / Campo Oficial', 'Respuesta Certificada'];
     const filas: (string | number)[][] = [
-      ['Alumna / Atleta', ficha.nombre_completo],
-      ['Apodo Preferido', ficha.apodo || '—'],
-      ['Email', ficha.email],
-      ['WhatsApp', ficha.telefono_whatsapp],
-      ['Edad y Fecha Nac.', `${ficha.edad} años (${ficha.fecha_nacimiento})`],
-      ['Ubicación', ficha.localidad_pais],
-      ['Contacto de Emergencia', ficha.contacto_emergencia],
-      ['Medidas Corporales', `Altura: ${ficha.altura} | Peso: ${ficha.peso} | Talla: ${ficha.talla_remera}`],
-      ['Alergias', ficha.alergias],
-      ['Lesiones / Articulaciones', ficha.detalle_lesiones || (ficha.problemas_musculares_oseos === 'Sí' ? 'Sí' : 'Ninguna')],
-      ['Medicamentos', ficha.detalle_medicamentos || (ficha.toma_medicamentos === 'Sí' ? 'Sí' : 'Ninguno')],
-      ['COVID y Secuelas', ficha.secuelas_covid || (ficha.tuvo_covid === 'Sí' ? 'Tuvo COVID sin secuelas' : 'No')],
-      ['Hábitos (Alcohol / Tabaco)', `Alcohol: ${ficha.consume_alcohol} | Tabaco: ${ficha.fuma}`],
-      ['Horas de Sueño', ficha.horas_sueno],
-      ['Objetivo Principal', ficha.objetivo_principal],
-      ['Motivo de Ingreso', ficha.motivo_totalhiit || '—'],
-      ['Actividad Actual', ficha.detalle_actividad_actual || ficha.actividad_fisica_actual],
-      ['Deportes Favoritos', ficha.deportes_favoritos || '—'],
-      ['Estado Emocional', ficha.estado_emocional || '—'],
-      ['Compromiso con el Entrenamiento', ficha.compromiso_ayuda],
+      ['1. Marca Temporal', ficha.fecha_registro],
+      ['2. Correo Electrónico', ficha.email],
+      ['3. Nombre', ficha.nombre],
+      ['4. Apellido', ficha.apellido],
+      ['5. Sexo', ficha.sexo],
+      ['6. Apodo Preferido', ficha.apodo || '—'],
+      ['7. Fecha de Nacimiento', ficha.fecha_nacimiento],
+      ['8. Edad', `${ficha.edad} años`],
+      ['9. Dónde vives, localidad, País', ficha.localidad_pais],
+      ['10. Altura', ficha.altura],
+      ['11. Peso', ficha.peso],
+      ['12. Talla de Remera', ficha.talla_remera],
+      ['13. Alergias', ficha.alergias],
+      ['14. ¿Embarazos?', ficha.embarazos],
+      ['15. ¿Tiene Hijos?', ficha.hijos],
+      ['16. ¿Tuvo Coronavirus?', ficha.tuvo_covid],
+      ['17. Secuelas Coronavirus', ficha.secuelas_covid || 'Ninguna'],
+      ['18. ¿Problemas Musculares / Articulares?', ficha.problemas_musculares_oseos],
+      ['19. ¿Desde cuándo? ¿Qué tienes?', ficha.lesiones_desde_cuando || 'Ninguna'],
+      ['20. ¿Tratamiento Actual?', ficha.tratamiento_actual || 'Ninguno'],
+      ['21. ¿Toma Medicamentos?', ficha.toma_medicamentos],
+      ['22. ¿Cuál? ¿Cómo?', ficha.medicamentos_detalle || 'Ninguno'],
+      ['23. ¿Discapacidad?', ficha.discapacidad || 'Ninguna'],
+      ['24. Observaciones de Utilidad', ficha.observaciones_medicas || 'Ninguna'],
+      ['25. ¿Consume Bebidas Alcohólicas?', ficha.consume_alcohol],
+      ['26. ¿Fumas?', ficha.fuma],
+      ['27. Frecuencia de Fumar', ficha.frecuencia_fuma || 'No fuma'],
+      ['28. Suplementos / Reguladores / Anticonceptivos', ficha.suplementos_anticonceptivos || 'Ninguno'],
+      ['29. ¿Cómo conociste a TOTALHIIT?', ficha.como_conocio_totalhiit || 'Redes Sociales'],
+      ['30. Teléfono y/o Celular', ficha.telefono_whatsapp],
+      ['31. ¿Sumar al Grupo de WhatsApp?', ficha.sumar_grupo_whatsapp],
+      ['32. Instagram', ficha.instagram || '—'],
+      ['33. Consentimiento Fotos / Grabaciones', ficha.consentimiento_fotos],
+      ['34. Redes [Instagram]', ficha.redes_instagram],
+      ['35. Redes [YouTube]', ficha.redes_youtube],
+      ['36. Redes [Voy corriendo a Seguirlos]', ficha.redes_voy_seguirlos],
+      ['37. Contacto de Emergencia', ficha.contacto_emergencia],
+      ['38. Objetivo Principal', ficha.objetivo_principal],
+      ['39. ¿Por qué TOTALHIIT?', ficha.motivo_totalhiit || '—'],
+      ['40. ¿Qué esperas recibir?', ficha.expectativas || '—'],
+      ['41. ¿Realiza Actividad Física Actual?', ficha.actividad_fisica_actual],
+      ['42. Detalle Actividad Actual', ficha.detalle_actividad_actual || '—'],
+      ['43. 3 Deportes Favoritos', ficha.deportes_favoritos || '—'],
+      ['44. Actividades Previas', ficha.actividades_previas || '—'],
+      ['45. Horas de Sueño', ficha.horas_sueno],
+      ['46. Estado Emocional', ficha.estado_emocional || '—'],
+      ['47. ¿Asiste a Terapia?', ficha.asiste_terapia || '—'],
+      ['48. Detalle de Terapia', ficha.detalle_terapia || '—'],
+      ['49. Compromiso y Ayuda', ficha.compromiso_ayuda],
     ];
 
     exportarAPDF(
-      `Ficha Integral de Salud y Entrenamiento`,
-      `Alumna: ${ficha.nombre_completo} | Registrado: ${ficha.fecha_registro}`,
+      `Ficha Integral de ${ficha.nombre_completo}`,
+      `Expediente Oficial de Salud & Entrenamiento TOTALHIIT (49 Campos)`,
       columnas,
       filas,
       [
         { etiqueta: 'Alumna', valor: ficha.nombre_completo },
+        { etiqueta: 'Email', valor: ficha.email },
+        { etiqueta: 'Teléfono', valor: ficha.telefono_whatsapp },
         { etiqueta: 'Edad', valor: `${ficha.edad} años` },
-        { etiqueta: 'Objetivo', valor: ficha.objetivo_principal.includes('Corporal') ? 'Composición Corporal' : 'Salud Integral' },
+        { etiqueta: 'Meta', valor: ficha.objetivo_principal.includes('Corporal') ? 'Corporal' : 'Salud Integral' },
       ]
     );
   };
 
-  // ==============================================================================
-  // VISTA DE BLOQUEO Y CONFIRMACIÓN (LUEGO DE FINALIZAR REGISTRO)
-  // ==============================================================================
+  // ============================================================================
+  // PANTALLA: FICHA BLOQUEADA / FINALIZADA
+  // ============================================================================
   if (fichaFinalizada) {
     return (
-      <div className="min-h-screen bg-stone-100 py-8 px-4 sm:px-6 font-sans">
-        <div className="max-w-2xl mx-auto space-y-6">
-          {/* Tarjeta de Éxito y Bloqueo */}
-          <div className="rounded-3xl border border-emerald-200 bg-white p-6 sm:p-8 shadow-xl text-center space-y-4">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 shadow-md">
+      <div className="min-h-screen bg-stone-100 py-8 px-4 font-sans text-stone-900">
+        <div className="max-w-3xl mx-auto space-y-6">
+          {/* Header de Éxito */}
+          <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-6 text-center shadow-xs space-y-3">
+            <div className="w-16 h-16 rounded-full bg-emerald-500 text-white flex items-center justify-center mx-auto shadow-md">
               <CheckCircle2 size={36} />
             </div>
-
-            <div className="space-y-1">
-              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700 border border-emerald-200">
-                <Lock size={12} /> Ficha Bloqueada & Certificada
-              </span>
-              <h1 className="text-2xl font-black text-stone-900">
-                ¡Registro Finalizado con Éxito!
-              </h1>
-              <p className="text-sm font-semibold text-rose-600">
-                {fichaFinalizada.nombre_completo} ({fichaFinalizada.email})
-              </p>
-            </div>
-
-            <p className="text-xs text-stone-600 leading-relaxed max-w-lg mx-auto">
-              Tus datos han sido registrados de forma segura y confidencial en el sistema de TOTALHIIT. Por motivos de privacidad médica y para garantizar la consistencia de tu plan, <strong>este formulario ya no puede ser modificado</strong>.
+            <h1 className="text-2xl font-black text-emerald-950">
+              ¡Registro Oficial Finalizado con Éxito!
+            </h1>
+            <p className="text-xs text-emerald-800 max-w-xl mx-auto">
+              Muchas gracias, <strong>{fichaFinalizada.nombre}</strong>. Tus datos han sido guardados y certificados en la base de datos de TOTALHIIT. Esta ficha ya se encuentra bloqueada para proteger la integridad de tu información.
             </p>
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 border border-emerald-300 px-3 py-1 text-[11px] font-bold text-emerald-900">
+              <Lock size={12} />
+              <span>Formulario Bloqueado (Solo Lectura) • 49 Preguntas Registradas</span>
+            </div>
+          </div>
 
-            <div className="flex flex-wrap items-center justify-center gap-2.5 pt-2">
-              <button
-                onClick={() => exportarMiFichaExcel(fichaFinalizada)}
-                className="flex items-center gap-1.5 rounded-xl border border-stone-300 bg-white px-4 py-2.5 text-xs font-bold text-stone-700 hover:bg-stone-50 shadow-xs cursor-pointer"
-              >
-                <FileSpreadsheet size={15} className="text-emerald-600" />
-                <span>Descargar Mi Ficha en Excel</span>
-              </button>
+          {/* Opciones de Exportación */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => exportarMiFichaExcel(fichaFinalizada)}
+              className="flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 p-4 font-bold text-white hover:bg-emerald-700 shadow-sm transition cursor-pointer"
+            >
+              <FileSpreadsheet size={18} />
+              <span>Exportar Mi Ficha a Excel (49 Cols)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => exportarMiFichaPDF(fichaFinalizada)}
+              className="flex items-center justify-center gap-2 rounded-2xl bg-rose-600 p-4 font-bold text-white hover:bg-rose-700 shadow-sm transition cursor-pointer"
+            >
+              <FileText size={18} />
+              <span>Exportar Mi Ficha a PDF</span>
+            </button>
+          </div>
 
-              <button
-                onClick={() => exportarMiFichaPDF(fichaFinalizada)}
-                className="flex items-center gap-1.5 rounded-xl border border-stone-300 bg-white px-4 py-2.5 text-xs font-bold text-stone-700 hover:bg-stone-50 shadow-xs cursor-pointer"
-              >
-                <Printer size={15} className="text-rose-600" />
-                <span>Guardar en PDF / Imprimir</span>
-              </button>
+          {/* Resumen del Expediente */}
+          <div className="rounded-3xl border border-stone-200 bg-white p-6 shadow-xs space-y-4">
+            <h2 className="text-base font-black text-stone-900 border-b pb-2 flex items-center gap-2">
+              <ShieldCheck className="text-rose-600" size={18} />
+              Resumen de tu Ficha Oficial TOTALHIIT
+            </h2>
 
-              <a
-                href={`https://wa.me/5491134567890?text=${encodeURIComponent(
-                  `¡Hola Valen! Ya completé y finalicé mi Ficha de Registro en TOTALHIIT. Mi nombre es ${fichaFinalizada.nombre_completo}. ¡Lista para comenzar!`
-                )}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-emerald-700 shadow-md shadow-emerald-600/20 cursor-pointer"
-              >
-                <MessageCircle size={15} />
-                <span>Avisar a mi Coach por WhatsApp</span>
-              </a>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+              <div className="rounded-xl bg-stone-50 p-3 space-y-1">
+                <span className="text-[10px] uppercase font-bold text-stone-500">Alumna / Atleta</span>
+                <p className="font-bold text-stone-900 text-sm">{fichaFinalizada.nombre_completo}</p>
+                <p className="text-stone-600">{fichaFinalizada.email} • {fichaFinalizada.telefono_whatsapp}</p>
+              </div>
+
+              <div className="rounded-xl bg-stone-50 p-3 space-y-1">
+                <span className="text-[10px] uppercase font-bold text-stone-500">Ubicación y Edad</span>
+                <p className="font-bold text-stone-900">{fichaFinalizada.localidad_pais}</p>
+                <p className="text-stone-600">{fichaFinalizada.edad} años ({fichaFinalizada.fecha_nacimiento})</p>
+              </div>
+
+              <div className="rounded-xl bg-stone-50 p-3 space-y-1">
+                <span className="text-[10px] uppercase font-bold text-stone-500">Contextura Corporal</span>
+                <p className="font-bold text-stone-900">{fichaFinalizada.altura} • {fichaFinalizada.peso}</p>
+                <p className="text-stone-600">Talla de Remera: {fichaFinalizada.talla_remera}</p>
+              </div>
+
+              <div className="rounded-xl bg-stone-50 p-3 space-y-1">
+                <span className="text-[10px] uppercase font-bold text-stone-500">Objetivo Principal</span>
+                <p className="font-bold text-rose-600">{fichaFinalizada.objetivo_principal}</p>
+              </div>
             </div>
 
             {onVolverAdmin && (
-              <div className="pt-3 border-t">
+              <div className="pt-4 border-t flex justify-center">
                 <button
+                  type="button"
                   onClick={onVolverAdmin}
-                  className="text-xs font-bold text-stone-500 hover:text-stone-800 underline"
+                  className="flex items-center gap-2 rounded-xl border border-stone-300 bg-white px-5 py-2.5 font-bold text-stone-700 hover:bg-stone-50 text-xs transition cursor-pointer"
                 >
-                  Volver al Panel de Administración CRM
+                  <ArrowLeft size={14} />
+                  <span>Volver al Panel Administrativo</span>
                 </button>
               </div>
             )}
-          </div>
-
-          {/* Resumen de Datos Registrados */}
-          <div className="rounded-3xl border border-stone-200 bg-white p-6 shadow-xs space-y-4 text-xs">
-            <div className="flex items-center justify-between border-b pb-3">
-              <h3 className="text-sm font-bold text-stone-900 flex items-center gap-1.5">
-                <Activity size={16} className="text-rose-600" />
-                <span>Resumen de tu Ficha Registrada</span>
-              </h3>
-              <span className="text-[11px] text-stone-400 font-mono">{fichaFinalizada.fecha_registro}</span>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-stone-700">
-              <div className="p-3 bg-stone-50 rounded-2xl space-y-1">
-                <span className="text-[10px] font-bold uppercase text-stone-400 block">Identificación</span>
-                <div><strong>Alumna:</strong> {fichaFinalizada.nombre_completo} {fichaFinalizada.apodo ? `("${fichaFinalizada.apodo}")` : ''}</div>
-                <div><strong>Edad / Nac.:</strong> {fichaFinalizada.edad} años ({fichaFinalizada.fecha_nacimiento})</div>
-                <div><strong>Ubicación:</strong> {fichaFinalizada.localidad_pais}</div>
-                <div><strong>WhatsApp:</strong> {fichaFinalizada.telefono_whatsapp}</div>
-              </div>
-
-              <div className="p-3 bg-stone-50 rounded-2xl space-y-1">
-                <span className="text-[10px] font-bold uppercase text-stone-400 block">Contextura Corporal</span>
-                <div><strong>Estatura:</strong> {fichaFinalizada.altura}</div>
-                <div><strong>Peso Actual:</strong> {fichaFinalizada.peso}</div>
-                <div><strong>Talla Remera:</strong> Talla {fichaFinalizada.talla_remera}</div>
-                <div><strong>Contacto Emergencia:</strong> {fichaFinalizada.contacto_emergencia}</div>
-              </div>
-
-              <div className="p-3 bg-stone-50 rounded-2xl space-y-1 sm:col-span-2">
-                <span className="text-[10px] font-bold uppercase text-stone-400 block">Objetivo & Metas</span>
-                <div><strong>Meta Principal:</strong> <span className="font-bold text-rose-600">{fichaFinalizada.objetivo_principal}</span></div>
-                {fichaFinalizada.motivo_totalhiit && <div><strong>¿Por qué TotalHIIT?:</strong> {fichaFinalizada.motivo_totalhiit}</div>}
-                {fichaFinalizada.alergias && <div><strong>Alergias:</strong> {fichaFinalizada.alergias}</div>}
-                {fichaFinalizada.detalle_lesiones && <div><strong>Lesiones previas:</strong> {fichaFinalizada.detalle_lesiones}</div>}
-              </div>
-            </div>
           </div>
         </div>
       </div>
     );
   }
 
-  // ==============================================================================
-  // FORMULARIO PRINCIPAL ACTIVO (PARA LA ALUMNA)
-  // ==============================================================================
+  // ============================================================================
+  // PANTALLA: FORMULARIO ACTIVO (49 PREGUNTAS EN 10 SECCIONES OFICIALES)
+  // ============================================================================
   return (
-    <div className="min-h-screen bg-stone-100 py-6 px-3 sm:px-6 font-sans">
-      <div className="max-w-2xl mx-auto space-y-5">
-        {/* Encabezado con Branding TotalHIIT */}
-        <div className="rounded-3xl border border-stone-200 bg-white p-6 sm:p-7 shadow-xs space-y-4">
-          <div className="flex items-center justify-between border-b pb-4">
-            <div className="flex items-center gap-3">
-              <img
-                src="/images/logo_valen.jpeg"
-                alt="TotalHIIT Logo"
-                className="h-12 w-12 rounded-2xl object-cover shadow-sm ring-2 ring-rose-500/20"
-                onError={(e) => {
-                  (e.target as HTMLElement).style.display = 'none';
-                }}
-              />
-              <div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-sm font-black tracking-wider text-stone-900">TOTAL<span className="text-rose-600">HIIT</span></span>
-                  <span className="rounded-full bg-rose-50 px-2 py-0.2 text-[9px] font-bold text-rose-600 border border-rose-200">OFICIAL</span>
-                </div>
-                <h1 className="text-base sm:text-lg font-bold text-stone-900">
-                  Ficha Integral de Salud & Entrenamiento
-                </h1>
-              </div>
+    <div className="min-h-screen bg-stone-100 py-6 px-4 font-sans text-stone-900">
+      <div className="max-w-3xl mx-auto space-y-6">
+        {/* Banner Superior */}
+        <div className="rounded-3xl border border-stone-200 bg-gradient-to-r from-stone-900 via-rose-950 to-stone-900 text-white p-6 shadow-md relative overflow-hidden">
+          <div className="relative z-10 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-500/20 border border-rose-400/40 px-3 py-1 text-[11px] font-bold text-rose-300">
+                <Sparkles size={12} />
+                <span>Formulario Oficial TOTALHIIT • 49 Columnas</span>
+              </span>
+
+              {onVolverAdmin && (
+                <button
+                  type="button"
+                  onClick={onVolverAdmin}
+                  className="flex items-center gap-1.5 rounded-xl bg-white/10 hover:bg-white/20 px-3 py-1 text-xs font-bold transition cursor-pointer"
+                >
+                  <ArrowLeft size={14} />
+                  <span>Admin CRM</span>
+                </button>
+              )}
             </div>
 
-            {onVolverAdmin && (
-              <button
-                type="button"
-                onClick={onVolverAdmin}
-                className="text-xs font-bold text-rose-600 hover:text-rose-700 bg-rose-50 px-3 py-1.5 rounded-xl border border-rose-200"
-              >
-                ← Volver al CRM
-              </button>
-            )}
-          </div>
-
-          <div className="rounded-2xl border border-rose-100 bg-rose-50/50 p-4 text-xs text-stone-700 leading-relaxed space-y-2">
-            <p className="font-semibold text-rose-900">
-              ¡Hola, Bienvenida a TOTALHIIT! 💪✨
+            <h1 className="text-xl sm:text-2xl font-black tracking-tight">
+              Planilla Integral de Ingreso & Salud de Alumnas
+            </h1>
+            <p className="text-xs text-stone-300 leading-relaxed">
+              Hola, ¡Bienvenida a TOTALHIIT! Este formulario tiene como fin conocerte mejor para llevar a cabo un entrenamiento seguro, divertido, eficiente y funcional adaptado a tu cuerpo.
             </p>
-            <p>
-              El siguiente formulario consta de una serie de preguntas acerca de ti con el fin de conocerte mejor y poder llevar a cabo un <strong>entrenamiento de calidad, seguro, divertido, eficiente y funcional</strong>. El objetivo primordial es prevenir lesiones y adaptar cada movimiento a tu historia.
-            </p>
-            <p className="text-[11px] text-stone-500 flex items-center gap-1">
-              <ShieldCheck size={14} className="text-rose-600 shrink-0" />
-              <span>Por favor responde con sinceridad. Tus respuestas son 100% privadas y confidenciales entre tú y tu Coach.</span>
-            </p>
-          </div>
-
-          {/* Barra de Progreso / Secciones */}
-          <div className="flex items-center justify-between gap-1 text-[11px] font-bold pt-1">
-            {[
-              { num: 1, label: 'Personales' },
-              { num: 2, label: 'Cuerpo' },
-              { num: 3, label: 'Médicos' },
-              { num: 4, label: 'Hábitos' },
-              { num: 5, label: 'Objetivos' },
-            ].map((s) => (
-              <button
-                key={s.num}
-                type="button"
-                onClick={() => setSeccionAbierta(s.num)}
-                className={`flex-1 py-1.5 rounded-xl transition text-center ${
-                  seccionAbierta === s.num
-                    ? 'bg-rose-600 text-white shadow-xs'
-                    : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-                }`}
-              >
-                {s.num}. {s.label}
-              </button>
-            ))}
           </div>
         </div>
 
+        {/* Notificaciones y Errores */}
         {errorValidacion && (
-          <div className="rounded-2xl bg-red-50 border border-red-200 p-3.5 text-xs text-red-700 flex items-center gap-2">
-            <AlertCircle size={16} className="shrink-0" />
+          <div className="rounded-2xl border border-red-200 bg-red-50 p-4 flex items-center gap-3 text-red-800 text-xs font-bold">
+            <AlertCircle size={18} className="shrink-0 text-red-600" />
             <span>{errorValidacion}</span>
           </div>
         )}
 
-        <form onSubmit={handleFinalizar} className="space-y-4 text-xs">
-          {/* ========================================================== */}
-          {/* SECCIÓN 1: DATOS PERSONALES                                */}
-          {/* ========================================================== */}
-          <div className="rounded-3xl border border-stone-200 bg-white p-5 sm:p-6 shadow-xs space-y-4">
+        {mensajeGuardado && (
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 flex items-center gap-3 text-emerald-800 text-xs font-bold">
+            <CheckCircle2 size={18} className="shrink-0 text-emerald-600" />
+            <span>Borrador guardado en tu navegador exitosamente.</span>
+          </div>
+        )}
+
+        {/* Selector Rápido de Secciones (1 al 10) */}
+        <div className="flex flex-wrap gap-1 rounded-2xl border border-stone-200 bg-white p-2 shadow-xs text-xs font-bold">
+          {[
+            { num: 1, label: '1. Personales' },
+            { num: 2, label: '2. Contextura' },
+            { num: 3, label: '3. Médicos' },
+            { num: 4, label: '4. Patologías' },
+            { num: 5, label: '5. Sustancias' },
+            { num: 6, label: '6. Redes & Contacto' },
+            { num: 7, label: '7. Objetivos' },
+            { num: 8, label: '8. Historia Física' },
+            { num: 9, label: '9. Emocional' },
+            { num: 10, label: '10. Compromiso' },
+          ].map((s) => (
+            <button
+              key={s.num}
+              type="button"
+              onClick={() => setSeccionAbierta(s.num)}
+              className={`flex-1 py-1.5 px-2 rounded-xl transition text-center whitespace-nowrap ${
+                seccionAbierta === s.num
+                  ? 'bg-rose-600 text-white shadow-xs'
+                  : 'bg-stone-50 text-stone-600 hover:bg-stone-200'
+              }`}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+
+        <form onSubmit={finalizarRegistro} className="space-y-4">
+          {/* ============================================================== */}
+          {/* SECCIÓN 1: DATOS PERSONALES (Preguntas 1 a 8)                  */}
+          {/* ============================================================== */}
+          <div className="rounded-3xl border border-stone-200 bg-white p-5 shadow-xs space-y-4">
             <button
               type="button"
               onClick={() => setSeccionAbierta(seccionAbierta === 1 ? 0 : 1)}
-              className="w-full flex items-center justify-between text-left font-bold text-sm text-stone-900"
+              className="w-full flex items-center justify-between text-left font-bold text-sm text-stone-900 cursor-pointer"
             >
               <span className="flex items-center gap-2">
                 <User size={16} className="text-rose-600" />
-                <span>1. Datos Personales & Contacto</span>
+                <span>1. Datos Personales (Cols 1 - 9)</span>
               </span>
               {seccionAbierta === 1 ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
             </button>
 
             {seccionAbierta === 1 && (
-              <div className="space-y-3 pt-2 border-t">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-[11px] font-semibold text-stone-600 mb-1">Nombre *</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="ej: Valentina"
-                      value={nombre}
-                      onChange={(e) => setNombre(e.target.value)}
-                      className="w-full rounded-xl border border-stone-300 p-2.5 text-xs outline-none focus:border-rose-600 bg-stone-50/50"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-semibold text-stone-600 mb-1">Apellido *</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="ej: Bolívar"
-                      value={apellido}
-                      onChange={(e) => setApellido(e.target.value)}
-                      className="w-full rounded-xl border border-stone-300 p-2.5 text-xs outline-none focus:border-rose-600 bg-stone-50/50"
-                    />
-                  </div>
+              <div className="space-y-3 pt-3 border-t text-xs">
+                <div>
+                  <label className="block font-bold text-stone-700 mb-1">
+                    Correo Electrónico <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="ejemplo@correo.com"
+                    className="w-full rounded-xl border border-stone-300 p-2.5 outline-none focus:border-rose-600"
+                  />
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[11px] font-semibold text-stone-600 mb-1">Correo Electrónico (Email) *</label>
+                    <label className="block font-bold text-stone-700 mb-1">
+                      Nombre <span className="text-red-500">*</span>
+                    </label>
                     <input
-                      type="email"
+                      type="text"
                       required
-                      placeholder="tuemail@gmail.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="w-full rounded-xl border border-stone-300 p-2.5 text-xs outline-none focus:border-rose-600 bg-stone-50/50"
+                      value={nombre}
+                      onChange={(e) => setNombre(e.target.value)}
+                      placeholder="Tu nombre"
+                      className="w-full rounded-xl border border-stone-300 p-2.5 outline-none focus:border-rose-600"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-semibold text-stone-600 mb-1">Teléfono y/o WhatsApp *</label>
+                    <label className="block font-bold text-stone-700 mb-1">
+                      Apellido <span className="text-red-500">*</span>
+                    </label>
                     <input
-                      type="tel"
+                      type="text"
                       required
-                      placeholder="+54 9 11 1234 5678"
-                      value={telefonoWhatsapp}
-                      onChange={(e) => setTelefonoWhatsapp(e.target.value)}
-                      className="w-full rounded-xl border border-stone-300 p-2.5 text-xs outline-none focus:border-rose-600 bg-stone-50/50"
+                      value={apellido}
+                      onChange={(e) => setApellido(e.target.value)}
+                      placeholder="Tu apellido"
+                      className="w-full rounded-xl border border-stone-300 p-2.5 outline-none focus:border-rose-600"
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
-                    <label className="block text-[11px] font-semibold text-stone-600 mb-1">Sexo</label>
+                    <label className="block font-bold text-stone-700 mb-1">Sexo</label>
                     <select
                       value={sexo}
-                      onChange={(e) => setSexo(e.target.value as typeof sexo)}
-                      className="w-full rounded-xl border border-stone-300 p-2.5 text-xs outline-none bg-stone-50/50 font-semibold"
+                      onChange={(e) => setSexo(e.target.value as 'Femenino' | 'Masculino')}
+                      className="w-full rounded-xl border border-stone-300 p-2.5 outline-none font-semibold text-stone-800"
                     >
                       <option value="Femenino">Femenino</option>
                       <option value="Masculino">Masculino</option>
                     </select>
                   </div>
                   <div>
-                    <label className="block text-[11px] font-semibold text-stone-600 mb-1">Edad</label>
+                    <label className="block font-bold text-stone-700 mb-1">Edad</label>
                     <input
                       type="number"
-                      min="15"
-                      max="95"
+                      min={15}
+                      max={95}
                       value={edad}
                       onChange={(e) => setEdad(Number(e.target.value))}
-                      className="w-full rounded-xl border border-stone-300 p-2.5 text-xs outline-none bg-stone-50/50 font-bold"
+                      className="w-full rounded-xl border border-stone-300 p-2.5 outline-none focus:border-rose-600"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-semibold text-stone-600 mb-1">Fecha de Nacimiento</label>
+                    <label className="block font-bold text-stone-700 mb-1">Fecha de Nacimiento</label>
                     <input
                       type="date"
                       value={fechaNacimiento}
                       onChange={(e) => setFechaNacimiento(e.target.value)}
-                      className="w-full rounded-xl border border-stone-300 p-2.5 text-xs outline-none bg-stone-50/50"
+                      className="w-full rounded-xl border border-stone-300 p-2.5 outline-none focus:border-rose-600"
                     />
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-[11px] font-semibold text-stone-600 mb-1">
-                      ¿Apodo? ¿Cómo quieres que te llamemos?
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="ej: Valen, Caro, Sofi..."
-                      value={apodo}
-                      onChange={(e) => setApodo(e.target.value)}
-                      className="w-full rounded-xl border border-stone-300 p-2.5 text-xs outline-none bg-stone-50/50"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-semibold text-stone-600 mb-1">
-                      ¿Dónde vives? Localidad, País
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="ej: Palermo, Buenos Aires, Argentina"
-                      value={localidadPais}
-                      onChange={(e) => setLocalidadPais(e.target.value)}
-                      className="w-full rounded-xl border border-stone-300 p-2.5 text-xs outline-none bg-stone-50/50"
-                    />
-                  </div>
+                <div>
+                  <label className="block font-bold text-stone-700 mb-1">
+                    Apodo (¿Cómo quieres que te llamemos?)
+                  </label>
+                  <input
+                    type="text"
+                    value={apodo}
+                    onChange={(e) => setApodo(e.target.value)}
+                    placeholder="Ejemplo: Valen, Raqui, Mari..."
+                    className="w-full rounded-xl border border-stone-300 p-2.5 outline-none focus:border-rose-600"
+                  />
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-[11px] font-semibold text-stone-600 mb-1">Instagram (@usuario)</label>
-                    <input
-                      type="text"
-                      placeholder="@tu_usuario"
-                      value={instagram}
-                      onChange={(e) => setInstagram(e.target.value)}
-                      className="w-full rounded-xl border border-stone-300 p-2.5 text-xs outline-none bg-stone-50/50"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-semibold text-stone-600 mb-1">Contacto de Emergencia</label>
-                    <input
-                      type="text"
-                      placeholder="Nombre, teléfono y parentesco"
-                      value={contactoEmergencia}
-                      onChange={(e) => setContactoEmergencia(e.target.value)}
-                      className="w-full rounded-xl border border-stone-300 p-2.5 text-xs outline-none bg-stone-50/50"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                  <div className="rounded-2xl border border-stone-200 p-3 bg-stone-50/40">
-                    <span className="block text-[11px] font-bold text-stone-700 mb-1">
-                      ¿Consentimiento para fotos/videos de corrección técnica?
-                    </span>
-                    <div className="flex gap-4">
-                      {['Sí', 'No'].map((op) => (
-                        <label key={op} className="flex items-center gap-1.5 cursor-pointer font-semibold">
-                          <input
-                            type="radio"
-                            name="consentimientoFotos"
-                            checked={consentimientoFotos === op}
-                            onChange={() => setConsentimientoFotos(op as 'Sí' | 'No')}
-                            className="accent-rose-600"
-                          />
-                          <span>{op}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="rounded-2xl border border-stone-200 p-3 bg-stone-50/40">
-                    <span className="block text-[11px] font-bold text-stone-700 mb-1">
-                      ¿Quieres sumarte al grupo de WhatsApp de clases ONLINE?
-                    </span>
-                    <div className="flex gap-4">
-                      {['Sí', 'No'].map((op) => (
-                        <label key={op} className="flex items-center gap-1.5 cursor-pointer font-semibold">
-                          <input
-                            type="radio"
-                            name="sumarGrupoWhatsapp"
-                            checked={sumarGrupoWhatsapp === op}
-                            onChange={() => setSumarGrupoWhatsapp(op as 'Sí' | 'No')}
-                            className="accent-rose-600"
-                          />
-                          <span>{op}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
+                <div>
+                  <label className="block font-bold text-stone-700 mb-1">
+                    Dónde vives, localidad, País <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={localidadPais}
+                    onChange={(e) => setLocalidadPais(e.target.value)}
+                    placeholder="Ej: Buenos Aires, Argentina / Miami, EE.UU."
+                    className="w-full rounded-xl border border-stone-300 p-2.5 outline-none focus:border-rose-600"
+                  />
                 </div>
               </div>
             )}
           </div>
 
-          {/* ========================================================== */}
-          {/* SECCIÓN 2: CONTEXTURA CORPORAL                             */}
-          {/* ========================================================== */}
-          <div className="rounded-3xl border border-stone-200 bg-white p-5 sm:p-6 shadow-xs space-y-4">
+          {/* ============================================================== */}
+          {/* SECCIÓN 2: CONTEXTURA CORPORAL (Preguntas 9 a 11)              */}
+          {/* ============================================================== */}
+          <div className="rounded-3xl border border-stone-200 bg-white p-5 shadow-xs space-y-4">
             <button
               type="button"
               onClick={() => setSeccionAbierta(seccionAbierta === 2 ? 0 : 2)}
-              className="w-full flex items-center justify-between text-left font-bold text-sm text-stone-900"
+              className="w-full flex items-center justify-between text-left font-bold text-sm text-stone-900 cursor-pointer"
             >
               <span className="flex items-center gap-2">
-                <Activity size={16} className="text-rose-600" />
-                <span>2. Contextura Corporal & Talla</span>
+                <Heart size={16} className="text-rose-600" />
+                <span>2. Contextura Corporal (Cols 10 - 12)</span>
               </span>
               {seccionAbierta === 2 ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
             </button>
 
             {seccionAbierta === 2 && (
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t text-xs">
                 <div>
-                  <label className="block text-[11px] font-semibold text-stone-600 mb-1">Altura (en Metros)</label>
+                  <label className="block font-bold text-stone-700 mb-1">Altura (M)</label>
                   <input
                     type="text"
-                    placeholder="ej: 1.68M"
                     value={altura}
                     onChange={(e) => setAltura(e.target.value)}
-                    className="w-full rounded-xl border border-stone-300 p-2.5 text-xs outline-none bg-stone-50/50 font-bold"
+                    placeholder="Ej: 1.65M"
+                    className="w-full rounded-xl border border-stone-300 p-2.5 outline-none focus:border-rose-600"
                   />
-                  <span className="text-[10px] text-stone-400 mt-0.5 block">Ejemplo: 1.70M</span>
                 </div>
-
                 <div>
-                  <label className="block text-[11px] font-semibold text-stone-600 mb-1">Peso (en Kg con decimal)</label>
+                  <label className="block font-bold text-stone-700 mb-1">Peso (Kg)</label>
                   <input
                     type="text"
-                    placeholder="ej: 64.5Kg"
                     value={peso}
                     onChange={(e) => setPeso(e.target.value)}
-                    className="w-full rounded-xl border border-stone-300 p-2.5 text-xs outline-none bg-stone-50/50 font-bold"
+                    placeholder="Ej: 64.5Kg"
+                    className="w-full rounded-xl border border-stone-300 p-2.5 outline-none focus:border-rose-600"
                   />
-                  <span className="text-[10px] text-stone-400 mt-0.5 block">Ejemplo: 65,5Kg</span>
                 </div>
-
                 <div>
-                  <label className="block text-[11px] font-semibold text-stone-600 mb-1">Talla de Remera / Camiseta</label>
+                  <label className="block font-bold text-stone-700 mb-1">Talla de Remera</label>
                   <select
                     value={tallaRemera}
-                    onChange={(e) => setTallaRemera(e.target.value as typeof tallaRemera)}
-                    className="w-full rounded-xl border border-stone-300 p-2.5 text-xs outline-none bg-stone-50/50 font-bold"
+                    onChange={(e) => setTallaRemera(e.target.value as 'S' | 'M' | 'L' | 'XL')}
+                    className="w-full rounded-xl border border-stone-300 p-2.5 outline-none font-semibold text-stone-800"
                   >
-                    <option value="S">Talla S</option>
-                    <option value="M">Talla M</option>
-                    <option value="L">Talla L</option>
-                    <option value="XL">Talla XL</option>
+                    <option value="S">S</option>
+                    <option value="M">M</option>
+                    <option value="L">L</option>
+                    <option value="XL">XL</option>
                   </select>
                 </div>
               </div>
             )}
           </div>
 
-          {/* ========================================================== */}
-          {/* SECCIÓN 3: DATOS MÉDICOS Y ANTECEDENTES                   */}
-          {/* ========================================================== */}
-          <div className="rounded-3xl border border-stone-200 bg-white p-5 sm:p-6 shadow-xs space-y-4">
+          {/* ============================================================== */}
+          {/* SECCIÓN 3: DATOS MÉDICOS (Preguntas 12 a 14)                   */}
+          {/* ============================================================== */}
+          <div className="rounded-3xl border border-stone-200 bg-white p-5 shadow-xs space-y-4">
             <button
               type="button"
               onClick={() => setSeccionAbierta(seccionAbierta === 3 ? 0 : 3)}
-              className="w-full flex items-center justify-between text-left font-bold text-sm text-stone-900"
+              className="w-full flex items-center justify-between text-left font-bold text-sm text-stone-900 cursor-pointer"
             >
               <span className="flex items-center gap-2">
-                <Heart size={16} className="text-rose-600" />
-                <span>3. Datos Médicos & Antecedentes Clínicos</span>
+                <ShieldCheck size={16} className="text-rose-600" />
+                <span>3. Datos Médicos (Cols 13 - 15)</span>
               </span>
               {seccionAbierta === 3 ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
             </button>
 
             {seccionAbierta === 3 && (
-              <div className="space-y-3 pt-2 border-t">
+              <div className="space-y-3 pt-3 border-t text-xs">
                 <div>
-                  <label className="block text-[11px] font-semibold text-stone-600 mb-1">
-                    Alergias (Especifica TODAS, inclusive las que consideres mínimas)
+                  <label className="block font-bold text-stone-700 mb-1">
+                    Alergias (Especifica TODAS, inclusive mínimas)
                   </label>
                   <textarea
                     rows={2}
-                    placeholder="Medicamentos, alimentos, picaduras, polen o ninguna..."
                     value={alergias}
                     onChange={(e) => setAlergias(e.target.value)}
-                    className="w-full rounded-xl border border-stone-300 p-2.5 text-xs outline-none bg-stone-50/50"
+                    placeholder="Penicilina, polen, ácaros, mariscos, o ninguna..."
+                    className="w-full rounded-xl border border-stone-300 p-2.5 outline-none focus:border-rose-600"
                   />
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="rounded-2xl border border-stone-200 p-3 bg-stone-50/40">
-                    <span className="block text-[11px] font-bold text-stone-700 mb-1">¿Embarazos?</span>
-                    <div className="flex gap-4">
-                      {['Sí', 'No'].map((op) => (
-                        <label key={op} className="flex items-center gap-1.5 cursor-pointer font-semibold">
-                          <input
-                            type="radio"
-                            name="embarazos"
-                            checked={embarazos === op}
-                            onChange={() => setEmbarazos(op as 'Sí' | 'No')}
-                            className="accent-rose-600"
-                          />
-                          <span>{op}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="rounded-2xl border border-stone-200 p-3 bg-stone-50/40">
-                    <span className="block text-[11px] font-bold text-stone-700 mb-1">¿Tienes hijos?</span>
-                    <div className="flex gap-3">
-                      {['Sí', 'No', 'No pienso tener'].map((op) => (
-                        <label key={op} className="flex items-center gap-1.5 cursor-pointer font-semibold">
-                          <input
-                            type="radio"
-                            name="hijos"
-                            checked={hijos === op}
-                            onChange={() => setHijos(op as typeof hijos)}
-                            className="accent-rose-600"
-                          />
-                          <span>{op}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-stone-200 p-3.5 bg-stone-50/40 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-stone-800">
-                      ¿Tuviste Coronavirus?
-                    </span>
-                    <div className="flex gap-4">
-                      {['Sí', 'No'].map((op) => (
-                        <label key={op} className="flex items-center gap-1.5 cursor-pointer font-semibold">
-                          <input
-                            type="radio"
-                            name="tuvoCovid"
-                            checked={tuvoCovid === op}
-                            onChange={() => setTuvoCovid(op as 'Sí' | 'No')}
-                            className="accent-rose-600"
-                          />
-                          <span>{op}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-
-                  {tuvoCovid === 'Sí' && (
-                    <div>
-                      <label className="block text-[10px] font-semibold text-stone-600 mb-0.5">
-                        ¿Quedaste con problemas respiratorios o cansancio extremo? Explica:
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Ninguna secuela / Me agito más rápido..."
-                        value={secuelasCovid}
-                        onChange={(e) => setSecuelasCovid(e.target.value)}
-                        className="w-full rounded-xl border border-stone-300 p-2 text-xs bg-white outline-none"
-                      />
-                    </div>
-                  )}
-                </div>
-
-                <div className="rounded-2xl border border-stone-200 p-3.5 bg-stone-50/40 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-stone-800">
-                      ¿Problemas, patologías o lesiones musculares, articulares u óseas?
-                    </span>
-                    <div className="flex gap-4">
-                      {['Sí', 'No'].map((op) => (
-                        <label key={op} className="flex items-center gap-1.5 cursor-pointer font-semibold">
-                          <input
-                            type="radio"
-                            name="problemasMusculares"
-                            checked={problemasMusculares === op}
-                            onChange={() => setProblemasMusculares(op as 'Sí' | 'No')}
-                            className="accent-rose-600"
-                          />
-                          <span>{op}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-
-                  {problemasMusculares === 'Sí' && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      <div>
-                        <label className="block text-[10px] font-semibold text-stone-600 mb-0.5">
-                          ¿Desde cuándo y qué tienes?
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="ej: Lumbalgia desde 2023, menisco derecho..."
-                          value={detalleLesiones}
-                          onChange={(e) => setDetalleLesiones(e.target.value)}
-                          className="w-full rounded-xl border border-stone-300 p-2 text-xs bg-white outline-none"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[10px] font-semibold text-stone-600 mb-0.5">
-                          ¿Realizas algún tratamiento?
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="Kinesiología, plantillas, etc."
-                          value={tratamientoActual}
-                          onChange={(e) => setTratamientoActual(e.target.value)}
-                          className="w-full rounded-xl border border-stone-300 p-2 text-xs bg-white outline-none"
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <div className="rounded-2xl border border-stone-200 p-3.5 bg-stone-50/40 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-stone-800">
-                      ¿Tomas algún medicamento en el día a día?
-                    </span>
-                    <div className="flex gap-4">
-                      {['Sí', 'No'].map((op) => (
-                        <label key={op} className="flex items-center gap-1.5 cursor-pointer font-semibold">
-                          <input
-                            type="radio"
-                            name="tomaMedicamentos"
-                            checked={tomaMedicamentos === op}
-                            onChange={() => setTomaMedicamentos(op as 'Sí' | 'No')}
-                            className="accent-rose-600"
-                          />
-                          <span>{op}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-
-                  {tomaMedicamentos === 'Sí' && (
-                    <div>
-                      <label className="block text-[10px] font-semibold text-stone-600 mb-0.5">
-                        ¿Cuál, cada cuántas horas y qué dosis?
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="ej: Levotiroxina 50mcg en ayunas..."
-                        value={detalleMedicamentos}
-                        onChange={(e) => setDetalleMedicamentos(e.target.value)}
-                        className="w-full rounded-xl border border-stone-300 p-2 text-xs bg-white outline-none"
-                      />
-                    </div>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[11px] font-semibold text-stone-600 mb-1">
-                      ¿Discapacidad motriz, auditiva, visual o verbal?
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Ninguna / Especificar..."
-                      value={discapacidad}
-                      onChange={(e) => setDiscapacidad(e.target.value)}
-                      className="w-full rounded-xl border border-stone-300 p-2.5 text-xs outline-none bg-stone-50/50"
-                    />
+                    <label className="block font-bold text-stone-700 mb-1">¿Embarazos?</label>
+                    <select
+                      value={embarazos}
+                      onChange={(e) => setEmbarazos(e.target.value as 'si' | 'no')}
+                      className="w-full rounded-xl border border-stone-300 p-2.5 outline-none font-semibold text-stone-800"
+                    >
+                      <option value="no">no</option>
+                      <option value="si">si</option>
+                    </select>
                   </div>
                   <div>
-                    <label className="block text-[11px] font-semibold text-stone-600 mb-1">
-                      Observaciones de utilidad médica
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Cualquier dato extra que debamos saber..."
-                      value={observacionesMedicas}
-                      onChange={(e) => setObservacionesMedicas(e.target.value)}
-                      className="w-full rounded-xl border border-stone-300 p-2.5 text-xs outline-none bg-stone-50/50"
-                    />
+                    <label className="block font-bold text-stone-700 mb-1">¿Tienes hijos?</label>
+                    <select
+                      value={hijos}
+                      onChange={(e) => setHijos(e.target.value as 'Si' | 'No' | 'No pienso tener')}
+                      className="w-full rounded-xl border border-stone-300 p-2.5 outline-none font-semibold text-stone-800"
+                    >
+                      <option value="No">No</option>
+                      <option value="Si">Si</option>
+                      <option value="No pienso tener">No pienso tener</option>
+                    </select>
                   </div>
                 </div>
               </div>
             )}
           </div>
 
-          {/* ========================================================== */}
-          {/* SECCIÓN 4: HÁBITOS, SUSTANCIAS Y SUEÑO                     */}
-          {/* ========================================================== */}
-          <div className="rounded-3xl border border-stone-200 bg-white p-5 sm:p-6 shadow-xs space-y-4">
+          {/* ============================================================== */}
+          {/* SECCIÓN 4: ENFERMEDADES Y PATOLOGÍAS (Preguntas 15 a 23)        */}
+          {/* ============================================================== */}
+          <div className="rounded-3xl border border-stone-200 bg-white p-5 shadow-xs space-y-4">
             <button
               type="button"
               onClick={() => setSeccionAbierta(seccionAbierta === 4 ? 0 : 4)}
-              className="w-full flex items-center justify-between text-left font-bold text-sm text-stone-900"
+              className="w-full flex items-center justify-between text-left font-bold text-sm text-stone-900 cursor-pointer"
             >
               <span className="flex items-center gap-2">
-                <Sparkles size={16} className="text-rose-600" />
-                <span>4. Hábitos, Suplementación & Sueño</span>
+                <AlertCircle size={16} className="text-amber-600" />
+                <span>4. Enfermedades y Patologías (Cols 16 - 24)</span>
               </span>
               {seccionAbierta === 4 ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
             </button>
 
             {seccionAbierta === 4 && (
-              <div className="space-y-3 pt-2 border-t">
+              <div className="space-y-3 pt-3 border-t text-xs">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="rounded-2xl border border-stone-200 p-3 bg-stone-50/40">
-                    <span className="block text-[11px] font-bold text-stone-700 mb-1">
-                      ¿Consumes bebidas alcohólicas?
-                    </span>
+                  <div>
+                    <label className="block font-bold text-stone-700 mb-1">¿Tuviste Coronavirus?</label>
                     <select
-                      value={consumeAlcohol}
-                      onChange={(e) => setConsumeAlcohol(e.target.value as typeof consumeAlcohol)}
-                      className="w-full rounded-xl border border-stone-300 p-2 text-xs bg-white font-semibold outline-none"
+                      value={tuvoCovid}
+                      onChange={(e) => setTuvoCovid(e.target.value as 'Si' | 'no')}
+                      className="w-full rounded-xl border border-stone-300 p-2.5 outline-none font-semibold text-stone-800"
                     >
-                      <option value="No">No</option>
-                      <option value="Algunas veces y poca cantidad">Algunas veces y poca cantidad</option>
-                      <option value="Sí">Sí</option>
+                      <option value="no">no</option>
+                      <option value="Si">Si</option>
                     </select>
                   </div>
-
-                  <div className="rounded-2xl border border-stone-200 p-3 bg-stone-50/40">
-                    <span className="block text-[11px] font-bold text-stone-700 mb-1">¿Fumas?</span>
-                    <div className="flex gap-4 mb-1">
-                      {['Sí', 'No'].map((op) => (
-                        <label key={op} className="flex items-center gap-1.5 cursor-pointer font-semibold">
-                          <input
-                            type="radio"
-                            name="fuma"
-                            checked={fuma === op}
-                            onChange={() => setFuma(op as 'Sí' | 'No')}
-                            className="accent-rose-600"
-                          />
-                          <span>{op}</span>
-                        </label>
-                      ))}
-                    </div>
-                    {fuma === 'Sí' && (
-                      <input
-                        type="text"
-                        placeholder="Frecuencia y cantidad..."
-                        value={frecuenciaFuma}
-                        onChange={(e) => setFrecuenciaFuma(e.target.value)}
-                        className="w-full rounded-xl border border-stone-300 p-1.5 text-xs bg-white outline-none mt-1"
-                      />
-                    )}
+                  <div>
+                    <label className="block font-bold text-stone-700 mb-1">Secuelas COVID / Cansancio extremo</label>
+                    <input
+                      type="text"
+                      value={secuelasCovid}
+                      onChange={(e) => setSecuelasCovid(e.target.value)}
+                      placeholder="Explique si quedó alguna secuela o 'Ninguna'..."
+                      className="w-full rounded-xl border border-stone-300 p-2.5 outline-none focus:border-rose-600"
+                    />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[11px] font-semibold text-stone-600 mb-1">
-                      Suplementos nutricionales, hormonas o anticonceptivos
+                    <label className="block font-bold text-stone-700 mb-1">
+                      ¿Problema muscular, articular u óseo?
                     </label>
+                    <select
+                      value={problemasMusculares}
+                      onChange={(e) => setProblemasMusculares(e.target.value as 'Si' | 'no')}
+                      className="w-full rounded-xl border border-stone-300 p-2.5 outline-none font-semibold text-stone-800"
+                    >
+                      <option value="no">no</option>
+                      <option value="Si">Si</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block font-bold text-stone-700 mb-1">¿Desde cuándo? ¿Qué tienes?</label>
                     <input
                       type="text"
-                      placeholder="Proteína, creatina, colágeno, anticonceptivos..."
-                      value={suplementosAnticonceptivos}
-                      onChange={(e) => setSuplementosAnticonceptivos(e.target.value)}
-                      className="w-full rounded-xl border border-stone-300 p-2.5 text-xs outline-none bg-stone-50/50"
+                      value={lesionesDesdeCuando}
+                      onChange={(e) => setLesionesDesdeCuando(e.target.value)}
+                      placeholder="Detalle de la lesión o molestia..."
+                      className="w-full rounded-xl border border-stone-300 p-2.5 outline-none focus:border-rose-600"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-stone-700 mb-1">¿Tratamiento actual que mejore tu condición?</label>
+                  <input
+                    type="text"
+                    value={tratamientoActual}
+                    onChange={(e) => setTratamientoActual(e.target.value)}
+                    placeholder="Fisioterapia, kinesiología, ninguno..."
+                    className="w-full rounded-xl border border-stone-300 p-2.5 outline-none focus:border-rose-600"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-bold text-stone-700 mb-1">¿Tomas medicamentos en el día a día?</label>
+                    <select
+                      value={tomaMedicamentos}
+                      onChange={(e) => setTomaMedicamentos(e.target.value as 'Si' | 'No')}
+                      className="w-full rounded-xl border border-stone-300 p-2.5 outline-none font-semibold text-stone-800"
+                    >
+                      <option value="No">No</option>
+                      <option value="Si">Si</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block font-bold text-stone-700 mb-1">¿Cuál? ¿Cómo? (Dosis, horas, etc.)</label>
+                    <input
+                      type="text"
+                      value={medicamentosDetalle}
+                      onChange={(e) => setMedicamentosDetalle(e.target.value)}
+                      placeholder="Nombre del medicamento y dosis..."
+                      className="w-full rounded-xl border border-stone-300 p-2.5 outline-none focus:border-rose-600"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-bold text-stone-700 mb-1">¿Alguna discapacidad (motriz, auditiva, visual)?</label>
+                    <input
+                      type="text"
+                      value={discapacidad}
+                      onChange={(e) => setDiscapacidad(e.target.value)}
+                      placeholder="Ninguna o especificar..."
+                      className="w-full rounded-xl border border-stone-300 p-2.5 outline-none focus:border-rose-600"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-semibold text-stone-600 mb-1">
-                      ¿Cuántas horas duermes diariamente?
-                    </label>
+                    <label className="block font-bold text-stone-700 mb-1">Observaciones de utilidad para el coach</label>
                     <input
                       type="text"
-                      placeholder="ej: 7 a 8 horas con siesta"
-                      value={horasSueno}
-                      onChange={(e) => setHorasSueno(e.target.value)}
-                      className="w-full rounded-xl border border-stone-300 p-2.5 text-xs outline-none bg-stone-50/50"
+                      value={observacionesMedicas}
+                      onChange={(e) => setObservacionesMedicas(e.target.value)}
+                      placeholder="Cualquier dato adicional relevante..."
+                      className="w-full rounded-xl border border-stone-300 p-2.5 outline-none focus:border-rose-600"
                     />
                   </div>
                 </div>
@@ -1178,187 +965,457 @@ export default function FormularioRegistro({ onVolverAdmin, esAdmin }: Props) {
             )}
           </div>
 
-          {/* ========================================================== */}
-          {/* SECCIÓN 5: OBJETIVOS, METAS Y TU HISTORIA                  */}
-          {/* ========================================================== */}
-          <div className="rounded-3xl border border-stone-200 bg-white p-5 sm:p-6 shadow-xs space-y-4">
+          {/* ============================================================== */}
+          {/* SECCIÓN 5: SUSTANCIAS, SUPLEMENTOS O HÁBITOS (Preguntas 24 a 27) */}
+          {/* ============================================================== */}
+          <div className="rounded-3xl border border-stone-200 bg-white p-5 shadow-xs space-y-4">
             <button
               type="button"
               onClick={() => setSeccionAbierta(seccionAbierta === 5 ? 0 : 5)}
-              className="w-full flex items-center justify-between text-left font-bold text-sm text-stone-900"
+              className="w-full flex items-center justify-between text-left font-bold text-sm text-stone-900 cursor-pointer"
             >
               <span className="flex items-center gap-2">
                 <Heart size={16} className="text-rose-600" />
-                <span>5. Objetivos, Metas & Tu Historia</span>
+                <span>5. Sustancias, Suplementos o Medicamentos (Cols 25 - 28)</span>
               </span>
               {seccionAbierta === 5 ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
             </button>
 
             {seccionAbierta === 5 && (
-              <div className="space-y-3 pt-2 border-t">
+              <div className="space-y-3 pt-3 border-t text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-bold text-stone-700 mb-1">¿Consumes bebidas alcohólicas?</label>
+                    <select
+                      value={consumeAlcohol}
+                      onChange={(e) => setConsumeAlcohol(e.target.value as 'Si' | 'No' | 'Algunas veces y poca cantidad')}
+                      className="w-full rounded-xl border border-stone-300 p-2.5 outline-none font-semibold text-stone-800"
+                    >
+                      <option value="No">No</option>
+                      <option value="Algunas veces y poca cantidad">Algunas veces y poca cantidad</option>
+                      <option value="Si">Si</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block font-bold text-stone-700 mb-1">¿Fumas?</label>
+                    <select
+                      value={fuma}
+                      onChange={(e) => setFuma(e.target.value as 'Si' | 'No')}
+                      className="w-full rounded-xl border border-stone-300 p-2.5 outline-none font-semibold text-stone-800"
+                    >
+                      <option value="No">No</option>
+                      <option value="Si">Si</option>
+                    </select>
+                  </div>
+                </div>
+
                 <div>
-                  <label className="block text-[11px] font-semibold text-stone-600 mb-1">
-                    Tu Objetivo Principal en TOTALHIIT *
+                  <label className="block font-bold text-stone-700 mb-1">Si fumas, ¿con qué frecuencia lo haces?</label>
+                  <input
+                    type="text"
+                    value={frecuenciaFuma}
+                    onChange={(e) => setFrecuenciaFuma(e.target.value)}
+                    placeholder="Cantidad y frecuencia o 'No fuma'..."
+                    className="w-full rounded-xl border border-stone-300 p-2.5 outline-none focus:border-rose-600"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-stone-700 mb-1">
+                    ¿Consumes suplementos deportivos, reguladores o anticonceptivos?
                   </label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {[
-                      'Corporal: Bajar grasa y aumentar masa muscular',
-                      'Mejorar tu salud de manera integral',
-                    ].map((obj) => (
-                      <label
-                        key={obj}
-                        className={`rounded-2xl border p-3 flex items-start gap-2 cursor-pointer transition ${
-                          objetivoPrincipal === obj
-                            ? 'border-rose-600 bg-rose-50/70 text-rose-900 font-bold'
-                            : 'border-stone-200 bg-stone-50/40 text-stone-700 hover:bg-stone-50'
-                        }`}
-                      >
-                        <input
-                          type="radio"
-                          name="objetivoPrincipal"
-                          checked={objetivoPrincipal === obj}
-                          onChange={() => setObjetivoPrincipal(obj as typeof objetivoPrincipal)}
-                          className="accent-rose-600 mt-0.5"
-                        />
-                        <span>{obj}</span>
-                      </label>
-                    ))}
+                  <input
+                    type="text"
+                    value={suplementosAnticonceptivos}
+                    onChange={(e) => setSuplementosAnticonceptivos(e.target.value)}
+                    placeholder="Creatina, colágeno, anticonceptivos, magnesio, ninguno..."
+                    className="w-full rounded-xl border border-stone-300 p-2.5 outline-none focus:border-rose-600"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* ============================================================== */}
+          {/* SECCIÓN 6: REDES SOCIALES Y CONTACTO (Preguntas 28 a 36)        */}
+          {/* ============================================================== */}
+          <div className="rounded-3xl border border-stone-200 bg-white p-5 shadow-xs space-y-4">
+            <button
+              type="button"
+              onClick={() => setSeccionAbierta(seccionAbierta === 6 ? 0 : 6)}
+              className="w-full flex items-center justify-between text-left font-bold text-sm text-stone-900 cursor-pointer"
+            >
+              <span className="flex items-center gap-2">
+                <Sparkles size={16} className="text-rose-600" />
+                <span>6. Medios de Comunicación & Redes Sociales (Cols 29 - 37)</span>
+              </span>
+              {seccionAbierta === 6 ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+            </button>
+
+            {seccionAbierta === 6 && (
+              <div className="space-y-3 pt-3 border-t text-xs">
+                <div>
+                  <label className="block font-bold text-stone-700 mb-1">¿Cómo llegaste a conocer a TOTALHIIT?</label>
+                  <input
+                    type="text"
+                    value={comoConocioTotalhiit}
+                    onChange={(e) => setComoConocioTotalhiit(e.target.value)}
+                    placeholder="Instagram, recomendación de una amiga, YouTube, Facebook..."
+                    className="w-full rounded-xl border border-stone-300 p-2.5 outline-none focus:border-rose-600"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-bold text-stone-700 mb-1">
+                      Teléfono y/o Celular (WhatsApp) <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={telefonoWhatsapp}
+                      onChange={(e) => setTelefonoWhatsapp(e.target.value)}
+                      placeholder="+54 9 11 1234 5678"
+                      className="w-full rounded-xl border border-stone-300 p-2.5 outline-none focus:border-rose-600 font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-bold text-stone-700 mb-1">¿Quieres que te sumemos al grupo de WhatsApp?</label>
+                    <select
+                      value={sumarGrupoWhatsapp}
+                      onChange={(e) => setSumarGrupoWhatsapp(e.target.value as 'Sí' | 'No')}
+                      className="w-full rounded-xl border border-stone-300 p-2.5 outline-none font-semibold text-stone-800"
+                    >
+                      <option value="Sí">Sí</option>
+                      <option value="No">No</option>
+                    </select>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[11px] font-semibold text-stone-600 mb-1">
-                      ¿Por qué decidiste unirte a TOTALHIIT?
-                    </label>
-                    <textarea
-                      rows={2}
-                      placeholder="Quiero mejorar mi energía, cambiar mi cuerpo..."
-                      value={motivoTotalhiit}
-                      onChange={(e) => setMotivoTotalhiit(e.target.value)}
-                      className="w-full rounded-xl border border-stone-300 p-2.5 text-xs outline-none bg-stone-50/50"
+                    <label className="block font-bold text-stone-700 mb-1">Tu Instagram (Nombre de usuario)</label>
+                    <input
+                      type="text"
+                      value={instagram}
+                      onChange={(e) => setInstagram(e.target.value)}
+                      placeholder="@tu_usuario"
+                      className="w-full rounded-xl border border-stone-300 p-2.5 outline-none focus:border-rose-600"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-semibold text-stone-600 mb-1">
-                      ¿Qué esperas recibir de nuestra parte?
-                    </label>
-                    <textarea
-                      rows={2}
-                      placeholder="Acompañamiento, motivación, rutinas dinámicas..."
-                      value={expectativas}
-                      onChange={(e) => setExpectativas(e.target.value)}
-                      className="w-full rounded-xl border border-stone-300 p-2.5 text-xs outline-none bg-stone-50/50"
-                    />
+                    <label className="block font-bold text-stone-700 mb-1">Consentimiento fotos/capturas para corrección técnica</label>
+                    <select
+                      value={consentimientoFotos}
+                      onChange={(e) => setConsentimientoFotos(e.target.value as 'si' | 'No')}
+                      className="w-full rounded-xl border border-stone-300 p-2.5 outline-none font-semibold text-stone-800"
+                    >
+                      <option value="si">si</option>
+                      <option value="No">No</option>
+                    </select>
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-stone-200 p-3.5 bg-stone-50/40 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-stone-800">
-                      ¿Realizas actividad física actualmente?
-                    </span>
-                    <div className="flex gap-4">
-                      {['Sí', 'No'].map((op) => (
-                        <label key={op} className="flex items-center gap-1.5 cursor-pointer font-semibold">
-                          <input
-                            type="radio"
-                            name="actividadFisicaActual"
-                            checked={actividadFisicaActual === op}
-                            onChange={() => setActividadFisicaActual(op as 'Sí' | 'No')}
-                            className="accent-rose-600"
-                          />
-                          <span>{op}</span>
-                        </label>
-                      ))}
-                    </div>
+                <div className="rounded-2xl border border-stone-200 bg-stone-50 p-3 space-y-2">
+                  <label className="block font-bold text-stone-800">¿Nos sigues en nuestras redes?</label>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <label className="flex items-center gap-2 font-medium text-stone-700 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={redesInstagram === 'Instagram @TOTALHIIT1'}
+                        onChange={(e) => setRedesInstagram(e.target.checked ? 'Instagram @TOTALHIIT1' : 'No')}
+                        className="rounded text-rose-600"
+                      />
+                      <span>Instagram @TOTALHIIT1</span>
+                    </label>
+                    <label className="flex items-center gap-2 font-medium text-stone-700 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={redesYoutube === 'YouTube TOTALHIIT ENTRENAMIENTO FUNCIONAL'}
+                        onChange={(e) => setRedesYoutube(e.target.checked ? 'YouTube TOTALHIIT ENTRENAMIENTO FUNCIONAL' : 'No')}
+                        className="rounded text-rose-600"
+                      />
+                      <span>YouTube Funcional</span>
+                    </label>
+                    <label className="flex items-center gap-2 font-medium text-stone-700 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={redesVoySeguirlos === 'Voy corriendo a Seguirlos'}
+                        onChange={(e) => setRedesVoySeguirlos(e.target.checked ? 'Voy corriendo a Seguirlos' : 'No')}
+                        className="rounded text-rose-600"
+                      />
+                      <span>Voy corriendo a seguirlos</span>
+                    </label>
                   </div>
+                </div>
 
-                  {actividadFisicaActual === 'Sí' && (
+                <div>
+                  <label className="block font-bold text-stone-700 mb-1">
+                    Contacto de Emergencia (Nombre, Teléfono, Parentesco)
+                  </label>
+                  <input
+                    type="text"
+                    value={contactoEmergencia}
+                    onChange={(e) => setContactoEmergencia(e.target.value)}
+                    placeholder="Ej: Juan Pérez (+54 9 11 9999 8888) - Pareja"
+                    className="w-full rounded-xl border border-stone-300 p-2.5 outline-none focus:border-rose-600"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* ============================================================== */}
+          {/* SECCIÓN 7: OBJETIVOS Y METAS (Preguntas 37 a 39)                */}
+          {/* ============================================================== */}
+          <div className="rounded-3xl border border-stone-200 bg-white p-5 shadow-xs space-y-4">
+            <button
+              type="button"
+              onClick={() => setSeccionAbierta(seccionAbierta === 7 ? 0 : 7)}
+              className="w-full flex items-center justify-between text-left font-bold text-sm text-stone-900 cursor-pointer"
+            >
+              <span className="flex items-center gap-2">
+                <Sparkles size={16} className="text-rose-600" />
+                <span>7. Objetivos y Metas (Cols 38 - 40)</span>
+              </span>
+              {seccionAbierta === 7 ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+            </button>
+
+            {seccionAbierta === 7 && (
+              <div className="space-y-3 pt-3 border-t text-xs">
+                <div>
+                  <label className="block font-bold text-stone-700 mb-1">Tu Objetivo principal es:</label>
+                  <select
+                    value={objetivoPrincipal}
+                    onChange={(e) => setObjetivoPrincipal(e.target.value as any)}
+                    className="w-full rounded-xl border border-stone-300 p-2.5 outline-none font-bold text-stone-800"
+                  >
+                    <option value="Corporal: Bajar grasa y aumentar masa muscular">
+                      🏋️ Corporal: Bajar grasa y aumentar masa muscular
+                    </option>
+                    <option value="Mejorar tu salud de manera integral">
+                      🌿 Mejorar tu salud de manera integral
+                    </option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-stone-700 mb-1">¿Por qué decidiste acceder a TOTALHIIT?</label>
+                  <textarea
+                    rows={2}
+                    value={motivoTotalhiit}
+                    onChange={(e) => setMotivoTotalhiit(e.target.value)}
+                    placeholder="Qué te inspiró a sumarte..."
+                    className="w-full rounded-xl border border-stone-300 p-2.5 outline-none focus:border-rose-600"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-stone-700 mb-1">¿Qué esperas recibir de nuestra parte?</label>
+                  <textarea
+                    rows={2}
+                    value={expectativas}
+                    onChange={(e) => setExpectativas(e.target.value)}
+                    placeholder="Tus expectativas personales..."
+                    className="w-full rounded-xl border border-stone-300 p-2.5 outline-none focus:border-rose-600"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* ============================================================== */}
+          {/* SECCIÓN 8: ¡¡TU HISTORIA!! ACTIVIDAD FÍSICA (Preguntas 40 a 44)  */}
+          {/* ============================================================== */}
+          <div className="rounded-3xl border border-stone-200 bg-white p-5 shadow-xs space-y-4">
+            <button
+              type="button"
+              onClick={() => setSeccionAbierta(seccionAbierta === 8 ? 0 : 8)}
+              className="w-full flex items-center justify-between text-left font-bold text-sm text-stone-900 cursor-pointer"
+            >
+              <span className="flex items-center gap-2">
+                <Heart size={16} className="text-rose-600" />
+                <span>8. ¡¡Tu Historia!! Actividad Física (Cols 41 - 45)</span>
+              </span>
+              {seccionAbierta === 8 ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+            </button>
+
+            {seccionAbierta === 8 && (
+              <div className="space-y-3 pt-3 border-t text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-bold text-stone-700 mb-1">¿Realizas actividad física actualmente?</label>
+                    <select
+                      value={actividadFisicaActual}
+                      onChange={(e) => setActividadFisicaActual(e.target.value as 'Si' | 'No')}
+                      className="w-full rounded-xl border border-stone-300 p-2.5 outline-none font-semibold text-stone-800"
+                    >
+                      <option value="Si">Si</option>
+                      <option value="No">No</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block font-bold text-stone-700 mb-1">¿Cuál o cuáles actividades?</label>
                     <input
                       type="text"
-                      placeholder="¿Cuál o cuáles? (ej: Caminatas 3 veces por semana, gimnasio...)"
                       value={detalleActividadActual}
                       onChange={(e) => setDetalleActividadActual(e.target.value)}
-                      className="w-full rounded-xl border border-stone-300 p-2 text-xs bg-white outline-none"
+                      placeholder="Caminata, pilates, gimnasio..."
+                      className="w-full rounded-xl border border-stone-300 p-2.5 outline-none focus:border-rose-600"
                     />
-                  )}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-stone-700 mb-1">
+                    Dime 3 Deportes, actividades físicas o disciplinas que más te gusten
+                  </label>
+                  <input
+                    type="text"
+                    value={deportesFavoritos}
+                    onChange={(e) => setDeportesFavoritos(e.target.value)}
+                    placeholder="Ej: Natación, HIIT, Senderismo..."
+                    className="w-full rounded-xl border border-stone-300 p-2.5 outline-none focus:border-rose-600"
+                  />
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[11px] font-semibold text-stone-600 mb-1">
-                      3 deportes o actividades que más te gusten
-                    </label>
+                    <label className="block font-bold text-stone-700 mb-1">¿Realizaste alguna actividad antes?</label>
                     <input
                       type="text"
-                      placeholder="ej: HIIT, Natación, Bailar..."
-                      value={deportesFavoritos}
-                      onChange={(e) => setDeportesFavoritos(e.target.value)}
-                      className="w-full rounded-xl border border-stone-300 p-2.5 text-xs outline-none bg-stone-50/50"
+                      value={actividadesPrevias}
+                      onChange={(e) => setActividadesPrevias(e.target.value)}
+                      placeholder="Danza, gimnasia, atletismo..."
+                      className="w-full rounded-xl border border-stone-300 p-2.5 outline-none focus:border-rose-600"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-semibold text-stone-600 mb-1">
-                      ¿Cómo te sientes emocionalmente hoy?
-                    </label>
+                    <label className="block font-bold text-stone-700 mb-1">¿Cuántas horas duermes diariamente?</label>
                     <input
                       type="text"
-                      placeholder="Motivada, un poco estresada por el trabajo..."
-                      value={estadoEmocional}
-                      onChange={(e) => setEstadoEmocional(e.target.value)}
-                      className="w-full rounded-xl border border-stone-300 p-2.5 text-xs outline-none bg-stone-50/50"
+                      value={horasSueno}
+                      onChange={(e) => setHorasSueno(e.target.value)}
+                      placeholder="Ej: 7 a 8 horas..."
+                      className="w-full rounded-xl border border-stone-300 p-2.5 outline-none focus:border-rose-600"
                     />
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-rose-300 bg-rose-50/60 p-4 space-y-2">
-                  <span className="block text-xs font-bold text-rose-900">
-                    🔥 IMPORTANTE: ¿Estás dispuesta a recibir nuestra ayuda para mejorar tu salud de manera integral y divertida?
-                  </span>
-                  <div className="flex flex-wrap gap-4 pt-1">
-                    {['Por supuesto', 'Sí', 'No'].map((op) => (
-                      <label key={op} className="flex items-center gap-1.5 cursor-pointer font-bold text-rose-900">
-                        <input
-                          type="radio"
-                          name="compromisoAyuda"
-                          checked={compromisoAyuda === op}
-                          onChange={() => setCompromisoAyuda(op as typeof compromisoAyuda)}
-                          className="accent-rose-600"
-                        />
-                        <span>{op}</span>
-                      </label>
-                    ))}
                   </div>
                 </div>
               </div>
             )}
           </div>
 
-          {/* Botonera de Envío y Guardado */}
-          <div className="rounded-3xl border border-stone-200 bg-white p-5 shadow-sm space-y-3">
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-              <button
-                type="button"
-                onClick={guardarBorrador}
-                className="flex items-center justify-center gap-1.5 rounded-xl border border-stone-300 bg-white px-4 py-2.5 text-xs font-bold text-stone-700 hover:bg-stone-50 transition cursor-pointer"
-              >
-                <RotateCcw size={14} />
-                <span>{mensajeGuardado ? '¡Borrador Guardado!' : 'Guardar Borrador'}</span>
-              </button>
+          {/* ============================================================== */}
+          {/* SECCIÓN 9: CÓMO ESTÁS EMOCIONALMENTE (Preguntas 45 a 47)        */}
+          {/* ============================================================== */}
+          <div className="rounded-3xl border border-stone-200 bg-white p-5 shadow-xs space-y-4">
+            <button
+              type="button"
+              onClick={() => setSeccionAbierta(seccionAbierta === 9 ? 0 : 9)}
+              className="w-full flex items-center justify-between text-left font-bold text-sm text-stone-900 cursor-pointer"
+            >
+              <span className="flex items-center gap-2">
+                <Heart size={16} className="text-rose-600" />
+                <span>9. Cómo estás Emocionalmente (Cols 46 - 48)</span>
+              </span>
+              {seccionAbierta === 9 ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+            </button>
 
-              <button
-                type="submit"
-                className="flex-1 flex items-center justify-center gap-2 rounded-2xl bg-rose-600 px-6 py-3 text-sm font-black text-white hover:bg-rose-700 shadow-lg shadow-rose-600/30 transition cursor-pointer"
-              >
-                <Send size={16} />
-                <span>FINALIZAR REGISTRO</span>
-              </button>
-            </div>
+            {seccionAbierta === 9 && (
+              <div className="space-y-3 pt-3 border-t text-xs">
+                <div>
+                  <label className="block font-bold text-stone-700 mb-1">
+                    ¿Cómo consideras que te sientes emocionalmente? (Explaya los motivos)
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={estadoEmocional}
+                    onChange={(e) => setEstadoEmocional(e.target.value)}
+                    placeholder="Motivada, estresada, con ganas de un cambio..."
+                    className="w-full rounded-xl border border-stone-300 p-2.5 outline-none focus:border-rose-600"
+                  />
+                </div>
 
-            <p className="text-[10px] text-stone-400 text-center">
-              🔒 Al presionar <strong>FINALIZAR REGISTRO</strong>, tus datos quedan guardados y certificados. No podrás modificarlos nuevamente por motivos de seguridad médica.
-            </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-bold text-stone-700 mb-1">¿Asistes a terapia (tradicional o alternativa)?</label>
+                    <input
+                      type="text"
+                      value={asisteTerapia}
+                      onChange={(e) => setAsisteTerapia(e.target.value)}
+                      placeholder="Psicología, coaching, yoga, ninguna..."
+                      className="w-full rounded-xl border border-stone-300 p-2.5 outline-none focus:border-rose-600"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-bold text-stone-700 mb-1">¿Cuál o cuáles?</label>
+                    <input
+                      type="text"
+                      value={detalleTerapia}
+                      onChange={(e) => setDetalleTerapia(e.target.value)}
+                      placeholder="Detalle o frecuencia..."
+                      className="w-full rounded-xl border border-stone-300 p-2.5 outline-none focus:border-rose-600"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* ============================================================== */}
+          {/* SECCIÓN 10: IMPORTANTE & COMPROMISO (Pregunta 48 / Col 49)      */}
+          {/* ============================================================== */}
+          <div className="rounded-3xl border border-rose-200 bg-rose-50/50 p-5 shadow-xs space-y-4">
+            <button
+              type="button"
+              onClick={() => setSeccionAbierta(seccionAbierta === 10 ? 0 : 10)}
+              className="w-full flex items-center justify-between text-left font-bold text-sm text-rose-950 cursor-pointer"
+            >
+              <span className="flex items-center gap-2">
+                <Sparkles size={16} className="text-rose-600" />
+                <span>10. Importante & Compromiso (Col 49)</span>
+              </span>
+              {seccionAbierta === 10 ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+            </button>
+
+            {seccionAbierta === 10 && (
+              <div className="space-y-3 pt-3 border-t border-rose-200 text-xs">
+                <div>
+                  <label className="block font-black text-rose-950 mb-1 uppercase tracking-tight text-[11px]">
+                    ¿ESTÁS DISPUESTO O DISPUESTA A RECIBIR NUESTRA AYUDA PARA MEJORAR TU SALUD DE MANERA INTEGRAL Y DIVERTIDA? <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={compromisoAyuda}
+                    onChange={(e) => setCompromisoAyuda(e.target.value as 'Si' | 'No' | 'Porsupuesto')}
+                    className="w-full rounded-xl border border-rose-300 bg-white p-3 outline-none font-black text-rose-900 text-sm"
+                  >
+                    <option value="Porsupuesto">Porsupuesto</option>
+                    <option value="Si">Si</option>
+                    <option value="No">No</option>
+                  </select>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Botones de Acción */}
+          <div className="pt-2 flex flex-col sm:flex-row gap-3 items-center justify-between">
+            <button
+              type="button"
+              onClick={guardarBorrador}
+              className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-2xl border border-stone-300 bg-white px-5 py-3 text-xs font-bold text-stone-700 hover:bg-stone-50 transition cursor-pointer"
+            >
+              <Save size={16} />
+              <span>Guardar Borrador Temporal</span>
+            </button>
+
+            <button
+              type="submit"
+              className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-700 hover:to-pink-700 px-8 py-3.5 text-xs font-black uppercase tracking-wide text-white shadow-md hover:shadow-lg transition cursor-pointer"
+            >
+              <Lock size={16} />
+              <span>FINALIZAR REGISTRO (49 Campos Oficiales)</span>
+            </button>
           </div>
         </form>
       </div>

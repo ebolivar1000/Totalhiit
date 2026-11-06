@@ -10,7 +10,8 @@ export default defineConfig({
       // Sitio público + panel de administración (entradas independientes)
       input: {
         main: 'index.html',
-        admin: 'admin.html'
+        admin: 'admin.html',
+        crm: 'crm.html'
       }
     }
   },

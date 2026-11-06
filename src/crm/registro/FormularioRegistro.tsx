@@ -303,6 +303,7 @@ export default function FormularioRegistro({ onVolverAdmin, esAdmin }: Props) {
 
     const actualizada = [nuevaFicha, ...listaActual.filter((x) => x.id !== nuevaFicha.id)];
     localStorage.setItem(STORAGE_FICHAS, JSON.stringify(actualizada));
+    localStorage.setItem('totalhiit_crm_fichas_registro_v3', JSON.stringify(actualizada));
     localStorage.removeItem(STORAGE_DRAFT);
     localStorage.setItem(STORAGE_FINALIZADA_ID, nuevaFicha.id);
 

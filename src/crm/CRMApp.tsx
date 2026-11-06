@@ -156,6 +156,7 @@ const PAISES_INICIALES: Pais[] = [
 ];
 
 const ALUMNAS_INICIALES: Alumna[] = [
+  { codigo: '0000', nombre_completo: 'Valentina Bolívar', pais_id: 2, moneda_preferida: 'ARS', cuota_mensual: 0, fecha_inicio: '2026-05-15', dia_de_pago: 1, activa: 1, email: 'totalhiit1@gmail.com', telefono_whatsapp: '+5491134567890' },
   { codigo: '0001', nombre_completo: 'Raquel Hernandez', pais_id: 1, moneda_preferida: 'USD', cuota_mensual: 40, fecha_inicio: '2026-06-01', dia_de_pago: 1, activa: 1, email: 'raquel.hernandez@totalhiit.com', telefono_whatsapp: '+13055550101' },
   { codigo: '0002', nombre_completo: 'Jackie Boriziuk', pais_id: 2, moneda_preferida: 'ARS', cuota_mensual: 40000, fecha_inicio: '2026-06-01', dia_de_pago: 1, activa: 1, email: 'jackie.boriziuk@totalhiit.com', telefono_whatsapp: '+5491155550102' },
   { codigo: '0003', nombre_completo: 'Esther Guisado', pais_id: 3, moneda_preferida: 'EUR', cuota_mensual: 30, fecha_inicio: '2026-06-01', dia_de_pago: 1, activa: 1, email: 'esther.guisado@totalhiit.com', telefono_whatsapp: '+4915155550103' },
@@ -165,19 +166,19 @@ const ALUMNAS_INICIALES: Alumna[] = [
   { codigo: '0007', nombre_completo: 'Nataly Benitez', pais_id: 2, moneda_preferida: 'ARS', cuota_mensual: 40000, fecha_inicio: '2026-06-01', dia_de_pago: 1, activa: 1, email: 'nataly.benitez@totalhiit.com', telefono_whatsapp: '+5491155550107' },
   { codigo: '0008', nombre_completo: 'Marlin Lopez', pais_id: 1, moneda_preferida: 'USD', cuota_mensual: 40, fecha_inicio: '2026-06-01', dia_de_pago: 1, activa: 1, email: 'marlin.lopez@totalhiit.com', telefono_whatsapp: '+13055550108' },
   { codigo: '0009', nombre_completo: 'Margareth Banegas', pais_id: 1, moneda_preferida: 'USD', cuota_mensual: 40, fecha_inicio: '2026-06-01', dia_de_pago: 1, activa: 1, email: 'margareth.banegas@totalhiit.com', telefono_whatsapp: '+13055550109' },
-  { codigo: '0010', nombre_completo: 'Roxana Carranza', pais_id: 4, moneda_preferida: 'EUR', cuota_mensual: 30, fecha_inicio: '2026-06-01', dia_de_pago: 1, activa: 1, email: 'roxana.carranza@totalhiit.com', telefono_whatsapp: '+358405550110' },
-  { codigo: '0011', nombre_completo: 'Pamela Gauto', pais_id: 2, moneda_preferida: 'ARS', cuota_mensual: 40000, fecha_inicio: '2026-06-01', dia_de_pago: 1, activa: 1, email: 'pamela.gauto@totalhiit.com', telefono_whatsapp: '+5491155550111' },
-  { codigo: '0012', nombre_completo: 'Maria Florencia Basso', pais_id: 2, moneda_preferida: 'ARS', cuota_mensual: 38000, fecha_inicio: '2026-06-01', dia_de_pago: 1, activa: 1, email: 'florencia.basso@totalhiit.com', telefono_whatsapp: '+5491155550112' },
-  { codigo: '0013', nombre_completo: 'Luciana Belen', pais_id: 2, moneda_preferida: 'ARS', cuota_mensual: 40000, fecha_inicio: '2026-06-01', dia_de_pago: 1, activa: 1, email: 'luciana.belen@totalhiit.com', telefono_whatsapp: '+5491155550113' },
-  { codigo: '0014', nombre_completo: 'Maria Ines', pais_id: 2, moneda_preferida: 'ARS', cuota_mensual: 40000, fecha_inicio: '2026-06-01', dia_de_pago: 1, activa: 1, email: 'maria.ines@totalhiit.com', telefono_whatsapp: '+5491155550114' },
-  { codigo: '0015', nombre_completo: 'Carolina Mendez', pais_id: 1, moneda_preferida: 'USD', cuota_mensual: 40, fecha_inicio: '2026-06-01', dia_de_pago: 1, activa: 1, email: 'carolina.mendez@totalhiit.com', telefono_whatsapp: '+13055550115' },
-  { codigo: '0016', nombre_completo: 'Karen Rodriguez', pais_id: 5, moneda_preferida: 'USD', cuota_mensual: 38, fecha_inicio: '2026-06-01', dia_de_pago: 1, activa: 1, email: 'karen.rodriguez@totalhiit.com', telefono_whatsapp: '+551195550116' },
-  { codigo: '0017', nombre_completo: 'Carolina Cardenas', pais_id: 1, moneda_preferida: 'USD', cuota_mensual: 40, fecha_inicio: '2026-06-01', dia_de_pago: 1, activa: 1, email: 'carolina.cardenas@totalhiit.com', telefono_whatsapp: '+13055550117' },
-  { codigo: '0018', nombre_completo: 'Silvana Vigliarolo', pais_id: 2, moneda_preferida: 'ARS', cuota_mensual: 40000, fecha_inicio: '2026-06-01', dia_de_pago: 1, activa: 1, email: 'silvana.vigliarolo@totalhiit.com', telefono_whatsapp: '+5491155550118' },
-  { codigo: '0019', nombre_completo: 'Maria Elena Silva', pais_id: 6, moneda_preferida: 'USD', cuota_mensual: 40, fecha_inicio: '2026-06-01', dia_de_pago: 1, activa: 1, email: 'maria.silva@totalhiit.com', telefono_whatsapp: '+56955550119' },
-  { codigo: '0020', nombre_completo: 'Maydelin Romero', pais_id: 1, moneda_preferida: 'USD', cuota_mensual: 40, fecha_inicio: '2026-06-01', dia_de_pago: 1, activa: 1, email: 'maydelin.romero@totalhiit.com', telefono_whatsapp: '+13055550120' },
-  { codigo: '0021', nombre_completo: 'Patricia Rossi', pais_id: 1, moneda_preferida: 'USD', cuota_mensual: 40, fecha_inicio: '2026-06-01', dia_de_pago: 1, activa: 1, email: 'patricia.rossi@totalhiit.com', telefono_whatsapp: '+13055550121' },
-  { codigo: '0022', nombre_completo: 'Marcela Sanchez', pais_id: 2, moneda_preferida: 'ARS', cuota_mensual: 40000, fecha_inicio: '2026-06-01', dia_de_pago: 1, activa: 1, email: 'marcela.sanchez@totalhiit.com', telefono_whatsapp: '+5491155550122' },
+  { codigo: '0010', nombre_completo: 'Adilia Rodriguez', pais_id: 1, moneda_preferida: 'USD', cuota_mensual: 50, fecha_inicio: '2026-06-01', dia_de_pago: 1, activa: 1, email: 'adilia.rodriguez@totalhiit.com', telefono_whatsapp: '+12125550110' },
+  { codigo: '0011', nombre_completo: 'Eileen Garcia', pais_id: 1, moneda_preferida: 'USD', cuota_mensual: 37, fecha_inicio: '2026-06-01', dia_de_pago: 1, activa: 1, email: 'eileen.garcia@totalhiit.com', telefono_whatsapp: '+18135550111' },
+  { codigo: '0012', nombre_completo: 'Sonia Valeriano', pais_id: 1, moneda_preferida: 'USD', cuota_mensual: 50, fecha_inicio: '2026-06-01', dia_de_pago: 1, activa: 1, email: 'sonia.valeriano@totalhiit.com', telefono_whatsapp: '+14155550112' },
+  { codigo: '0013', nombre_completo: 'Yolanda Montijo', pais_id: 1, moneda_preferida: 'USD', cuota_mensual: 40, fecha_inicio: '2026-06-01', dia_de_pago: 1, activa: 1, email: 'yolanda.montijo@totalhiit.com', telefono_whatsapp: '+16025550113' },
+  { codigo: '0014', nombre_completo: 'Abygail Garcia', pais_id: 2, moneda_preferida: 'ARS', cuota_mensual: 40000, fecha_inicio: '2026-06-01', dia_de_pago: 1, activa: 1, email: 'abygail.garcia@totalhiit.com', telefono_whatsapp: '+5493415550114' },
+  { codigo: '0015', nombre_completo: 'Manuela Sarome', pais_id: 2, moneda_preferida: 'ARS', cuota_mensual: 42000, fecha_inicio: '2026-06-01', dia_de_pago: 1, activa: 1, email: 'manuela.sarome@totalhiit.com', telefono_whatsapp: '+5491155550115' },
+  { codigo: '0016', nombre_completo: 'Lousa Basili', pais_id: 3, moneda_preferida: 'EUR', cuota_mensual: 34, fecha_inicio: '2026-06-01', dia_de_pago: 1, activa: 1, email: 'lousa.basili@totalhiit.com', telefono_whatsapp: '+4916055550116' },
+  { codigo: '0017', nombre_completo: 'Monica Barber', pais_id: 1, moneda_preferida: 'USD', cuota_mensual: 30, fecha_inicio: '2026-06-01', dia_de_pago: 1, activa: 1, email: 'monica.barber@totalhiit.com', telefono_whatsapp: '+14045550117' },
+  { codigo: '0018', nombre_completo: 'Karla Kuusella', pais_id: 4, moneda_preferida: 'EUR', cuota_mensual: 36, fecha_inicio: '2026-06-01', dia_de_pago: 1, activa: 1, email: 'karla.kuusella@totalhiit.com', telefono_whatsapp: '+358405550118' },
+  { codigo: '0019', nombre_completo: 'Frania Lähdemäki', pais_id: 4, moneda_preferida: 'EUR', cuota_mensual: 36, fecha_inicio: '2026-06-01', dia_de_pago: 1, activa: 1, email: 'frania.lahdemaki@totalhiit.com', telefono_whatsapp: '+358505550119' },
+  { codigo: '0020', nombre_completo: 'Jessica Ledesma', pais_id: 1, moneda_preferida: 'USD', cuota_mensual: 40, fecha_inicio: '2026-06-01', dia_de_pago: 1, activa: 1, email: 'jessica.ledesma@totalhiit.com', telefono_whatsapp: '+12015550120' },
+  { codigo: '0021', nombre_completo: 'Mariela Decuzzi', pais_id: 2, moneda_preferida: 'ARS', cuota_mensual: 37000, fecha_inicio: '2026-06-01', dia_de_pago: 1, activa: 1, email: 'mariela.decuzzi@totalhiit.com', telefono_whatsapp: '+5492615550121' },
+  { codigo: '0022', nombre_completo: 'Susana Costa', pais_id: 2, moneda_preferida: 'ARS', cuota_mensual: 42000, fecha_inicio: '2026-06-01', dia_de_pago: 1, activa: 1, email: 'susana.costa@totalhiit.com', telefono_whatsapp: '+5491155550122' },
 ];
 
 const INGRESOS_INICIALES: Ingreso[] = [
@@ -190,20 +191,21 @@ const INGRESOS_INICIALES: Ingreso[] = [
   { id: 'ing-7', tipo_ingreso: 'CUOTA_ALUMNA', alumna_codigo: '0007', concepto: 'Cuota Mensual TotalHIIT', fecha_pago: '2026-06-01', moneda_original: 'ARS', monto_original: 40000, tasa_a_usd: 0.00069, tasa_a_ars: 1.0, usd_equivalente: 27.59, ars_equivalente: 40000.0, mes_periodo: 6, anio_periodo: 2026, metodo_pago: 'Transferencia', estado: 'APROBADO' },
   { id: 'ing-8', tipo_ingreso: 'CUOTA_ALUMNA', alumna_codigo: '0008', concepto: 'Cuota Mensual TotalHIIT', fecha_pago: '2026-06-01', moneda_original: 'USD', monto_original: 40, tasa_a_usd: 1.0, tasa_a_ars: 1449.58, usd_equivalente: 40.0, ars_equivalente: 57983.2, mes_periodo: 6, anio_periodo: 2026, metodo_pago: 'Transferencia', estado: 'APROBADO' },
   { id: 'ing-9', tipo_ingreso: 'CUOTA_ALUMNA', alumna_codigo: '0009', concepto: 'Cuota Mensual TotalHIIT', fecha_pago: '2026-06-01', moneda_original: 'USD', monto_original: 40, tasa_a_usd: 1.0, tasa_a_ars: 1449.58, usd_equivalente: 40.0, ars_equivalente: 57983.2, mes_periodo: 6, anio_periodo: 2026, metodo_pago: 'Transferencia', estado: 'APROBADO' },
-  { id: 'ing-10', tipo_ingreso: 'CUOTA_ALUMNA', alumna_codigo: '0010', concepto: 'Cuota Mensual TotalHIIT', fecha_pago: '2026-06-01', moneda_original: 'EUR', monto_original: 30, tasa_a_usd: 1.1468, tasa_a_ars: 1662.36, usd_equivalente: 34.4, ars_equivalente: 49870.8, mes_periodo: 6, anio_periodo: 2026, metodo_pago: 'Transferencia', estado: 'APROBADO' },
-  { id: 'ing-11', tipo_ingreso: 'CUOTA_ALUMNA', alumna_codigo: '0011', concepto: 'Cuota Mensual TotalHIIT', fecha_pago: '2026-06-01', moneda_original: 'ARS', monto_original: 40000, tasa_a_usd: 0.00069, tasa_a_ars: 1.0, usd_equivalente: 27.59, ars_equivalente: 40000.0, mes_periodo: 6, anio_periodo: 2026, metodo_pago: 'Transferencia', estado: 'APROBADO' },
-  { id: 'ing-12', tipo_ingreso: 'CUOTA_ALUMNA', alumna_codigo: '0012', concepto: 'Cuota Mensual TotalHIIT', fecha_pago: '2026-06-01', moneda_original: 'ARS', monto_original: 38000, tasa_a_usd: 0.00069, tasa_a_ars: 1.0, usd_equivalente: 26.21, ars_equivalente: 38000.0, mes_periodo: 6, anio_periodo: 2026, metodo_pago: 'Transferencia', estado: 'APROBADO' },
-  { id: 'ing-13', tipo_ingreso: 'CUOTA_ALUMNA', alumna_codigo: '0013', concepto: 'Cuota Mensual TotalHIIT', fecha_pago: '2026-06-01', moneda_original: 'ARS', monto_original: 40000, tasa_a_usd: 0.00069, tasa_a_ars: 1.0, usd_equivalente: 27.59, ars_equivalente: 40000.0, mes_periodo: 6, anio_periodo: 2026, metodo_pago: 'Transferencia', estado: 'APROBADO' },
+  { id: 'ing-10', tipo_ingreso: 'CUOTA_ALUMNA', alumna_codigo: '0010', concepto: 'Cuota Mensual TotalHIIT', fecha_pago: '2026-06-01', moneda_original: 'USD', monto_original: 50, tasa_a_usd: 1.0, tasa_a_ars: 1449.58, usd_equivalente: 50.0, ars_equivalente: 72479.0, mes_periodo: 6, anio_periodo: 2026, metodo_pago: 'Transferencia', estado: 'APROBADO' },
+  { id: 'ing-11', tipo_ingreso: 'CUOTA_ALUMNA', alumna_codigo: '0011', concepto: 'Cuota Mensual TotalHIIT', fecha_pago: '2026-06-01', moneda_original: 'USD', monto_original: 37, tasa_a_usd: 1.0, tasa_a_ars: 1449.58, usd_equivalente: 37.0, ars_equivalente: 53634.46, mes_periodo: 6, anio_periodo: 2026, metodo_pago: 'Transferencia', estado: 'APROBADO' },
+  { id: 'ing-12', tipo_ingreso: 'CUOTA_ALUMNA', alumna_codigo: '0012', concepto: 'Cuota Mensual TotalHIIT', fecha_pago: '2026-06-01', moneda_original: 'USD', monto_original: 50, tasa_a_usd: 1.0, tasa_a_ars: 1449.58, usd_equivalente: 50.0, ars_equivalente: 72479.0, mes_periodo: 6, anio_periodo: 2026, metodo_pago: 'Transferencia', estado: 'APROBADO' },
+  { id: 'ing-13', tipo_ingreso: 'CUOTA_ALUMNA', alumna_codigo: '0013', concepto: 'Cuota Mensual TotalHIIT', fecha_pago: '2026-06-01', moneda_original: 'USD', monto_original: 40, tasa_a_usd: 1.0, tasa_a_ars: 1449.58, usd_equivalente: 40.0, ars_equivalente: 57983.2, mes_periodo: 6, anio_periodo: 2026, metodo_pago: 'Transferencia', estado: 'APROBADO' },
   { id: 'ing-14', tipo_ingreso: 'CUOTA_ALUMNA', alumna_codigo: '0014', concepto: 'Cuota Mensual TotalHIIT', fecha_pago: '2026-06-01', moneda_original: 'ARS', monto_original: 40000, tasa_a_usd: 0.00069, tasa_a_ars: 1.0, usd_equivalente: 27.59, ars_equivalente: 40000.0, mes_periodo: 6, anio_periodo: 2026, metodo_pago: 'Transferencia', estado: 'APROBADO' },
-  { id: 'ing-15', tipo_ingreso: 'CUOTA_ALUMNA', alumna_codigo: '0015', concepto: 'Cuota Mensual TotalHIIT', fecha_pago: '2026-06-01', moneda_original: 'USD', monto_original: 40, tasa_a_usd: 1.0, tasa_a_ars: 1449.58, usd_equivalente: 40.0, ars_equivalente: 57983.2, mes_periodo: 6, anio_periodo: 2026, metodo_pago: 'Transferencia', estado: 'APROBADO' },
-  { id: 'ing-16', tipo_ingreso: 'CUOTA_ALUMNA', alumna_codigo: '0016', concepto: 'Cuota Mensual TotalHIIT', fecha_pago: '2026-06-01', moneda_original: 'USD', monto_original: 38, tasa_a_usd: 1.0, tasa_a_ars: 1449.58, usd_equivalente: 38.0, ars_equivalente: 55084.04, mes_periodo: 6, anio_periodo: 2026, metodo_pago: 'Transferencia', estado: 'APROBADO' },
-  { id: 'ing-17', tipo_ingreso: 'CUOTA_ALUMNA', alumna_codigo: '0017', concepto: 'Cuota Mensual TotalHIIT', fecha_pago: '2026-06-01', moneda_original: 'USD', monto_original: 40, tasa_a_usd: 1.0, tasa_a_ars: 1449.58, usd_equivalente: 40.0, ars_equivalente: 57983.2, mes_periodo: 6, anio_periodo: 2026, metodo_pago: 'Transferencia', estado: 'APROBADO' },
-  { id: 'ing-18', tipo_ingreso: 'CUOTA_ALUMNA', alumna_codigo: '0018', concepto: 'Cuota Mensual TotalHIIT', fecha_pago: '2026-06-01', moneda_original: 'EUR', monto_original: 30, tasa_a_usd: 1.1468, tasa_a_ars: 1662.36, usd_equivalente: 34.4, ars_equivalente: 49870.8, mes_periodo: 6, anio_periodo: 2026, metodo_pago: 'Transferencia', estado: 'APROBADO' },
-  { id: 'ing-19', tipo_ingreso: 'CUOTA_ALUMNA', alumna_codigo: '0019', concepto: 'Cuota Mensual TotalHIIT', fecha_pago: '2026-06-01', moneda_original: 'EUR', monto_original: 30, tasa_a_usd: 1.1468, tasa_a_ars: 1662.36, usd_equivalente: 34.4, ars_equivalente: 49870.8, mes_periodo: 6, anio_periodo: 2026, metodo_pago: 'Transferencia', estado: 'APROBADO' },
+  { id: 'ing-15', tipo_ingreso: 'CUOTA_ALUMNA', alumna_codigo: '0015', concepto: 'Cuota Mensual TotalHIIT', fecha_pago: '2026-06-01', moneda_original: 'ARS', monto_original: 42000, tasa_a_usd: 0.00069, tasa_a_ars: 1.0, usd_equivalente: 28.98, ars_equivalente: 42000.0, mes_periodo: 6, anio_periodo: 2026, metodo_pago: 'Transferencia', estado: 'APROBADO' },
+  { id: 'ing-16', tipo_ingreso: 'CUOTA_ALUMNA', alumna_codigo: '0016', concepto: 'Cuota Mensual TotalHIIT', fecha_pago: '2026-06-01', moneda_original: 'EUR', monto_original: 34, tasa_a_usd: 1.1468, tasa_a_ars: 1662.36, usd_equivalente: 38.99, ars_equivalente: 56520.24, mes_periodo: 6, anio_periodo: 2026, metodo_pago: 'Transferencia', estado: 'APROBADO' },
+  { id: 'ing-17', tipo_ingreso: 'CUOTA_ALUMNA', alumna_codigo: '0017', concepto: 'Cuota Mensual TotalHIIT', fecha_pago: '2026-06-01', moneda_original: 'USD', monto_original: 30, tasa_a_usd: 1.0, tasa_a_ars: 1449.58, usd_equivalente: 30.0, ars_equivalente: 43487.4, mes_periodo: 6, anio_periodo: 2026, metodo_pago: 'Transferencia', estado: 'APROBADO' },
+  { id: 'ing-18', tipo_ingreso: 'CUOTA_ALUMNA', alumna_codigo: '0018', concepto: 'Cuota Mensual TotalHIIT', fecha_pago: '2026-06-01', moneda_original: 'EUR', monto_original: 36, tasa_a_usd: 1.1468, tasa_a_ars: 1662.36, usd_equivalente: 41.28, ars_equivalente: 59844.96, mes_periodo: 6, anio_periodo: 2026, metodo_pago: 'Transferencia', estado: 'APROBADO' },
+  { id: 'ing-19', tipo_ingreso: 'CUOTA_ALUMNA', alumna_codigo: '0019', concepto: 'Cuota Mensual TotalHIIT', fecha_pago: '2026-06-01', moneda_original: 'EUR', monto_original: 36, tasa_a_usd: 1.1468, tasa_a_ars: 1662.36, usd_equivalente: 41.28, ars_equivalente: 59844.96, mes_periodo: 6, anio_periodo: 2026, metodo_pago: 'Transferencia', estado: 'APROBADO' },
   { id: 'ing-20', tipo_ingreso: 'CUOTA_ALUMNA', alumna_codigo: '0020', concepto: 'Cuota Mensual TotalHIIT', fecha_pago: '2026-06-01', moneda_original: 'USD', monto_original: 40, tasa_a_usd: 1.0, tasa_a_ars: 1449.58, usd_equivalente: 40.0, ars_equivalente: 57983.2, mes_periodo: 6, anio_periodo: 2026, metodo_pago: 'Transferencia', estado: 'APROBADO' },
-  { id: 'ing-21', tipo_ingreso: 'CUOTA_ALUMNA', alumna_codigo: '0021', concepto: 'Cuota Mensual TotalHIIT', fecha_pago: '2026-06-01', moneda_original: 'USD', monto_original: 40, tasa_a_usd: 1.0, tasa_a_ars: 1449.58, usd_equivalente: 40.0, ars_equivalente: 57983.2, mes_periodo: 6, anio_periodo: 2026, metodo_pago: 'Transferencia', estado: 'APROBADO' },
-  { id: 'ing-22', tipo_ingreso: 'CONTRATACION_APP', cliente_o_marca: 'Membresías App Móvil', concepto: 'Suscripciones mensuales App TotalHIIT', fecha_pago: '2026-06-15', moneda_original: 'USD', monto_original: 120, tasa_a_usd: 1.0, tasa_a_ars: 1449.58, usd_equivalente: 120.0, ars_equivalente: 173949.6, mes_periodo: 6, anio_periodo: 2026, metodo_pago: 'Stripe', estado: 'APROBADO' },
-  { id: 'ing-23', tipo_ingreso: 'COLABORACION_MARCA', cliente_o_marca: 'FitPro Suplementos', concepto: 'Patrocinio video bootcamp + mención', fecha_pago: '2026-06-20', moneda_original: 'USD', monto_original: 250, tasa_a_usd: 1.0, tasa_a_ars: 1449.58, usd_equivalente: 250.0, ars_equivalente: 362395.0, mes_periodo: 6, anio_periodo: 2026, metodo_pago: 'PayPal', estado: 'APROBADO' },
+  { id: 'ing-21', tipo_ingreso: 'CUOTA_ALUMNA', alumna_codigo: '0021', concepto: 'Cuota Mensual TotalHIIT', fecha_pago: '2026-06-01', moneda_original: 'ARS', monto_original: 37000, tasa_a_usd: 0.00069, tasa_a_ars: 1.0, usd_equivalente: 25.53, ars_equivalente: 37000.0, mes_periodo: 6, anio_periodo: 2026, metodo_pago: 'Transferencia', estado: 'APROBADO' },
+  { id: 'ing-22', tipo_ingreso: 'CUOTA_ALUMNA', alumna_codigo: '0022', concepto: 'Cuota Mensual TotalHIIT', fecha_pago: '2026-06-01', moneda_original: 'ARS', monto_original: 42000, tasa_a_usd: 0.00069, tasa_a_ars: 1.0, usd_equivalente: 28.98, ars_equivalente: 42000.0, mes_periodo: 6, anio_periodo: 2026, metodo_pago: 'Transferencia', estado: 'APROBADO' },
+  { id: 'ing-23', tipo_ingreso: 'CONTRATACION_APP', cliente_o_marca: 'Membresías App Móvil', concepto: 'Suscripciones mensuales App TotalHIIT', fecha_pago: '2026-06-15', moneda_original: 'USD', monto_original: 120, tasa_a_usd: 1.0, tasa_a_ars: 1449.58, usd_equivalente: 120.0, ars_equivalente: 173949.6, mes_periodo: 6, anio_periodo: 2026, metodo_pago: 'Stripe', estado: 'APROBADO' },
+  { id: 'ing-24', tipo_ingreso: 'COLABORACION_MARCA', cliente_o_marca: 'FitPro Suplementos', concepto: 'Patrocinio video bootcamp + mención', fecha_pago: '2026-06-20', moneda_original: 'USD', monto_original: 250, tasa_a_usd: 1.0, tasa_a_ars: 1449.58, usd_equivalente: 250.0, ars_equivalente: 362395.0, mes_periodo: 6, anio_periodo: 2026, metodo_pago: 'PayPal', estado: 'APROBADO' },
 ];
 
 const EGRESOS_INICIALES: Egreso[] = [
@@ -297,7 +299,7 @@ export default function CRMApp() {
     if (raw) {
       try {
         const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length >= ALUMNAS_INICIALES.length) return parsed;
       } catch {}
     }
     return ALUMNAS_INICIALES;
@@ -309,7 +311,7 @@ export default function CRMApp() {
     if (raw) {
       try {
         const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length >= INGRESOS_INICIALES.length) return parsed;
       } catch {}
     }
     return INGRESOS_INICIALES;
@@ -343,33 +345,51 @@ export default function CRMApp() {
         admin_email: 'ebolivar1000@gmail.com',
         modulo: 'ALUMNAS',
         tipo_accion: 'CAMBIO_CUOTA_ALUMNA',
-        detalle: 'Carga certificada inicial del padrón de 22 alumnas desde Excel oficial',
+        detalle: 'Carga certificada inicial del padrón de 23 alumnas desde Excel oficial',
         monto_previo: '—',
         monto_nuevo: 'Cuotas base fijadas',
       },
     ];
   });
 
-  // Fichas de Registro e Historial Integral (Google Form Integrado)
+  // Fichas de Registro e Historial Integral (Google Form Integrado) - 23 Alumnas Oficiales
   const [fichas, setFichas] = useState<FichaRegistro[]>(() => {
-    const raw = localStorage.getItem('totalhiit_crm_fichas_registro');
+    const raw = localStorage.getItem('totalhiit_crm_fichas_registro_v3');
     if (raw) {
       try {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        const parsed: FichaRegistro[] = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length >= FICHAS_INICIALES.length) return parsed;
       } catch {}
     }
+    // Si viene de caché previa, asegurar que contenga las 23 fichas completas
+    try {
+      const oldRaw = localStorage.getItem('totalhiit_crm_fichas_registro');
+      if (oldRaw) {
+        const oldParsed: FichaRegistro[] = JSON.parse(oldRaw);
+        if (Array.isArray(oldParsed) && oldParsed.length > 0) {
+          const idsExistentes = new Set(oldParsed.map((f) => f.id || f.email));
+          const faltantes = FICHAS_INICIALES.filter((f) => !idsExistentes.has(f.id) && !idsExistentes.has(f.email));
+          const fusionadas = [...oldParsed, ...faltantes];
+          if (fusionadas.length >= FICHAS_INICIALES.length) {
+            localStorage.setItem('totalhiit_crm_fichas_registro_v3', JSON.stringify(fusionadas));
+            return fusionadas;
+          }
+        }
+      }
+    } catch {}
+    localStorage.setItem('totalhiit_crm_fichas_registro_v3', JSON.stringify(FICHAS_INICIALES));
     return FICHAS_INICIALES;
   });
 
   useEffect(() => {
+    localStorage.setItem('totalhiit_crm_fichas_registro_v3', JSON.stringify(fichas));
     localStorage.setItem('totalhiit_crm_fichas_registro', JSON.stringify(fichas));
   }, [fichas]);
 
   // Sincronización en vivo si una alumna envía su formulario desde otra pestaña o ventana
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'totalhiit_crm_fichas_registro' && e.newValue) {
+      if ((e.key === 'totalhiit_crm_fichas_registro' || e.key === 'totalhiit_crm_fichas_registro_v3') && e.newValue) {
         try {
           const actualizadas = JSON.parse(e.newValue);
           if (Array.isArray(actualizadas)) {
@@ -2661,7 +2681,7 @@ export default function CRMApp() {
                               <div className="text-[10px] text-stone-500">Talla: {f.talla_remera}</div>
                             </td>
                             <td className="py-3 px-3.5 text-stone-600 max-w-xs truncate" title={f.alergias}>
-                              {f.alergias !== 'Ninguna conocida' && f.alergias !== 'Ninguna indicada' ? (
+                              {f.alergias !== 'Ninguna conocida' && f.alergias !== 'Ninguna indicada' && f.alergias !== 'Ninguna' ? (
                                 <span className="rounded bg-red-50 text-red-700 px-1.5 py-0.5 text-[10px] font-bold mr-1">
                                   ⚠️ {f.alergias}
                                 </span>

@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build && node -e \"const fs = require('fs'); if (fs.existsSync('dist/crm/registro/index.html')) fs.copyFileSync('dist/crm/registro/index.html', 'dist/crm/registro.html'); if (fs.existsSync('dist/crm.html')) { fs.mkdirSync('dist/crm', { recursive: true }); fs.copyFileSync('dist/crm.html', 'dist/crm/index.html'); }\"",
+    "build": "tsc -b && vite build",
     "preview": "vite preview",
     "test:api": "esbuild scripts/api-test.ts --bundle --platform=node --format=esm --outfile=node_modules/.cache/api-test.mjs --log-level=warning && node node_modules/.cache/api-test.mjs",
     "admin:secrets": "node scripts/admin-secrets.mjs"

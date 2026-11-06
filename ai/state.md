@@ -151,6 +151,15 @@ cobro dual: **Wise (USD)** para el exterior y **Mercado Pago / transferencia ban
 - Comandos: `npx wrangler pages deploy --project-name totalhiit --branch main` (usa `dist/`),
   `npx wrangler pages deployment tail https://<hash>.totalhiit.pages.dev --project-name totalhiit`.
 
+- **Accesos identificados (2026-10-28)**: cuenta Cloudflare `caribialabs@gmail.com` (Account ID
+  `748e17f85a2c00af747c2d8028dba903`); proyecto Pages `totalhiit` verificado en esa cuenta con
+  `wrangler whoami` / `pages project list`; KV `SITE_CONTENT` vacío (sin contenido publicado ni
+  clave rotada); panel `/admin` verificado con usuario `admin` y la clave documentada en
+  `docs/arquitectura.docx` §2.1 (recomendación de rotación incluida; la clave no se repite en
+  archivos de contexto del repo); wrangler con OAuth ya autorizado en esta PC (deploy sin pedir
+  credenciales). `arquitectura.docx` actualizado con §2.2 (cuenta y acceso) y §2.3 (videos:
+  ubicación y modificación).
+
 ## Verificación visual (sin navegador de escritorio)
 - Se verificó el render con Chrome/Edge headless (`--screenshot`) + análisis de píxeles:
   el Hero renderiza con **fondo rojo magenta** (`#B10050`), titular en blanco, collage visible como

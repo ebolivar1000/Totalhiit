@@ -142,6 +142,18 @@ Desarrollar la plataforma web y clone funcional para TOTALHIIT (+40) enfocada en
 - **Fix**: PBKDF2 bajó de 120.000 a **100.000** iteraciones (Cloudflare no soporta más y el login
   daba 500). Verificado end-to-end: login, sesión, publicar y leer contenido desde KV.
 
+## 2026-10-28 — Identificación de accesos y documentación
+- Cuenta de Cloudflare identificada y verificada: `caribialabs@gmail.com` (Account ID
+  `748e17f85a2c00af747c2d8028dba903`), proyecto Pages `totalhiit` (https://totalhiit.pages.dev).
+- KV `SITE_CONTENT` vacío: nunca se publicó contenido desde el panel ni se rotó la clave, por lo
+  que la clave vigente es la cargada como secreto de Cloudflare.
+- Credenciales del panel verificadas contra producción (login HTTP 200): usuario `admin` y la
+  clave documentada en `docs/arquitectura.docx` §2.1 (se recomienda rotarla desde la pestaña
+  Seguridad). Por regla del repo la clave no se repite en archivos de contexto.
+- `arquitectura.docx` actualizado (OneDrive `Documentos\Proyectos\totalhiit` y copia del repo):
+  §2 con la cuenta real, nueva §2.2 (cuenta de Cloudflare y acceso) y §2.3 (dónde viven los
+  videos del sitio y cómo modificarlos: MP4 del Hero, MP4 de Clases en Vivo e IDs de YouTube).
+
 ## Próxima tarea
 Revisión visual en celular del nuevo orden y del video del Hero; completar el alias de Mercado Pago;
 evaluar auto-deploy (GitHub Actions o proyecto Git-connected) y la Fase 2 (R2).

@@ -11,6 +11,7 @@ import {
   Edit2,
   Eye,
   EyeOff,
+  FileSpreadsheet,
   Filter,
   Globe,
   History,
@@ -18,9 +19,11 @@ import {
   Mail,
   MessageCircle,
   Plus,
+  Printer,
   RotateCcw,
   Search,
   Send,
+  ShieldCheck,
   Square,
   Trash2,
   TrendingUp,
@@ -31,6 +34,7 @@ import {
   obtenerCotizacionParaFecha,
   SnapshotCotizacion,
 } from './cotizaciones';
+import { exportarAExcel, exportarAPDF } from './exportador';
 
 const NOMBRES_MESES = [
   'Enero',
@@ -113,6 +117,22 @@ export interface Egreso {
   anio_periodo: number;
   metodo_pago: string;
   notas?: string;
+}
+
+export interface RegistroAuditoria {
+  id: string;
+  fecha_hora: string;
+  admin_email: string;
+  modulo: 'INGRESOS' | 'EGRESOS' | 'ALUMNAS';
+  tipo_accion:
+    | 'EDICION_INGRESO'
+    | 'ELIMINACION_INGRESO'
+    | 'EDICION_EGRESO'
+    | 'ELIMINACION_EGRESO'
+    | 'CAMBIO_CUOTA_ALUMNA';
+  detalle: string;
+  monto_previo?: string;
+  monto_nuevo?: string;
 }
 
 // ==============================================================================
@@ -236,7 +256,7 @@ export default function CRMApp() {
 
   // Navegación
   const [tab, setTab] = useState<
-    'alumnas' | 'vencimientos' | 'recordatorios' | 'ingresos' | 'egresos' | 'dashboard' | 'paises' | 'seguridad'
+    'alumnas' | 'vencimientos' | 'recordatorios' | 'ingresos' | 'egresos' | 'dashboard' | 'paises' | 'auditoria' | 'seguridad'
   >('alumnas');
 
   // Países y Monedas
@@ -287,6 +307,29 @@ export default function CRMApp() {
     return EGRESOS_INICIALES;
   });
 
+  // Historial de Logs & Auditoría (Solo Lectura)
+  const [logsAuditoria, setLogsAuditoria] = useState<RegistroAuditoria[]>(() => {
+    const raw = localStorage.getItem('totalhiit_crm_auditoria_logs');
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed;
+      } catch {}
+    }
+    return [
+      {
+        id: 'log-inicial',
+        fecha_hora: '2026-06-01 12:00:00',
+        admin_email: 'ebolivar1000@gmail.com',
+        modulo: 'ALUMNAS',
+        tipo_accion: 'CAMBIO_CUOTA_ALUMNA',
+        detalle: 'Carga certificada inicial del padrón de 22 alumnas desde Excel oficial',
+        monto_previo: '—',
+        monto_nuevo: 'Cuotas base fijadas',
+      },
+    ];
+  });
+
   // Plantilla de Recordatorios
   const [plantillaMsg, setPlantillaMsg] = useState<string>(() => {
     return localStorage.getItem(LLAVE_STORAGE_PLANTILLA) || PLANTILLA_RECORDATORIO_DEFECTO;
@@ -310,8 +353,34 @@ export default function CRMApp() {
   }, [egresos]);
 
   useEffect(() => {
+    localStorage.setItem('totalhiit_crm_auditoria_logs', JSON.stringify(logsAuditoria));
+  }, [logsAuditoria]);
+
+  useEffect(() => {
     localStorage.setItem(LLAVE_STORAGE_PLANTILLA, plantillaMsg);
   }, [plantillaMsg]);
+
+  // Función Auditoría
+  const registrarLogAuditoria = (
+    modulo: 'INGRESOS' | 'EGRESOS' | 'ALUMNAS',
+    tipo_accion: RegistroAuditoria['tipo_accion'],
+    detalle: string,
+    monto_previo?: string,
+    monto_nuevo?: string
+  ) => {
+    const nuevoLog: RegistroAuditoria = {
+      id: `log-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      fecha_hora: new Date().toLocaleString('es-ES'),
+      admin_email: adminEmail,
+      modulo,
+      tipo_accion,
+      detalle,
+      monto_previo,
+      monto_nuevo,
+    };
+    setLogsAuditoria((prev) => [nuevoLog, ...prev]);
+  };
+
 
   // Mapa de Países
   const mapaPaises = useMemo(() => {
@@ -452,6 +521,23 @@ export default function CRMApp() {
   const [egrTasaUsd, setEgrTasaUsd] = useState<number>(1.0);
   const [egrTasaArs, setEgrTasaArs] = useState<number>(1449.58);
 
+  // Estados de Edición de Ingreso y Egreso (Requerimiento 2)
+  const [ingresoEdit, setIngresoEdit] = useState<Ingreso | null>(null);
+  const [egresoEdit, setEgresoEdit] = useState<Egreso | null>(null);
+
+  // Modal Caja de Texto Copy/Paste para Email (Requerimiento 1 - Sin abrir Outlook)
+  const [modalEmailBox, setModalEmailBox] = useState(false);
+  const [emailDestino, setEmailDestino] = useState('');
+  const [emailAlumnaNombre, setEmailAlumnaNombre] = useState('');
+  const [asuntoEmail, setAsuntoEmail] = useState('');
+  const [cuerpoEmail, setCuerpoEmail] = useState('');
+  const [copiadoEmailCampo, setCopiadoEmailCampo] = useState<'ninguno' | 'email' | 'asunto' | 'cuerpo' | 'todo'>('ninguno');
+
+  // Filtros Auditoría & Logs (Requerimiento 3)
+  const [busquedaAuditoria, setBusquedaAuditoria] = useState('');
+  const [filtroModuloAuditoria, setFiltroModuloAuditoria] = useState<string>('todos');
+  const [filtroAccionAuditoria, setFiltroAccionAuditoria] = useState<string>('todas');
+
   // Modal Mensaje Individual
   const [modalMsg, setModalMsg] = useState(false);
   const [alumnaMsg, setAlumnaMsg] = useState<Alumna | null>(null);
@@ -516,6 +602,114 @@ export default function CRMApp() {
     setTextoMsg(mensaje);
     setCopiado(false);
     setModalMsg(true);
+  };
+
+  // Abrir caja de texto Copy/Paste para Email (Requerimiento 1)
+  const abrirModalEmailBox = (email: string, nombre: string, asunto: string, cuerpo: string) => {
+    setEmailDestino(email);
+    setEmailAlumnaNombre(nombre);
+    setAsuntoEmail(asunto);
+    setCuerpoEmail(cuerpo);
+    setCopiadoEmailCampo('ninguno');
+    setModalEmailBox(true);
+  };
+
+  // Acciones de Ingresos (Requerimiento 2 y 3)
+  const abrirEditarIngreso = (ing: Ingreso) => {
+    setIngresoEdit(ing);
+    setIngTipo(ing.tipo_ingreso);
+    setIngAlumnaCod(ing.alumna_codigo || '');
+    setIngClienteMarca(ing.cliente_o_marca || '');
+    setIngConcepto(ing.concepto);
+    setIngFecha(ing.fecha_pago);
+    setIngMesPeriodo(ing.mes_periodo || 6);
+    setIngAnioPeriodo(ing.anio_periodo || 2026);
+    setIngMesesAdelantados(1);
+    setIngMoneda(ing.moneda_original);
+    setIngMonto(ing.monto_original);
+    setIngTasaUsd(ing.tasa_a_usd);
+    setIngTasaArs(ing.tasa_a_ars);
+    setIngMetodo(ing.metodo_pago || 'Transferencia');
+    setModalIngreso(true);
+  };
+
+  const abrirNuevoIngreso = () => {
+    setIngresoEdit(null);
+    setIngTipo('CUOTA_ALUMNA');
+    setIngAlumnaCod(alumnas[0]?.codigo || '');
+    setIngClienteMarca('');
+    setIngConcepto('Cuota Mensual TotalHIIT');
+    setIngFecha(new Date().toISOString().split('T')[0]);
+    setIngMesPeriodo(new Date().getMonth() + 1);
+    setIngAnioPeriodo(new Date().getFullYear());
+    setIngMesesAdelantados(1);
+    setIngMoneda('USD');
+    setIngMonto(40);
+    setIngTasaUsd(1.0);
+    setIngTasaArs(cotizacionLive?.usd_blue_venta || 1449.58);
+    setIngMetodo('Transferencia');
+    setModalIngreso(true);
+  };
+
+  const eliminarIngreso = (ing: Ingreso) => {
+    if (
+      window.confirm(
+        `¿Seguro que deseas eliminar el ingreso de ${ing.concepto} (${ing.moneda_original} ${ing.monto_original})? Esta acción quedará registrada en Auditoría.`
+      )
+    ) {
+      setIngresos((prev) => prev.filter((x) => x.id !== ing.id));
+      registrarLogAuditoria(
+        'INGRESOS',
+        'ELIMINACION_INGRESO',
+        `Eliminación del ingreso #${ing.id}: ${ing.concepto} (${ing.moneda_original} ${ing.monto_original})`,
+        `${ing.moneda_original} ${ing.monto_original}`,
+        '0'
+      );
+    }
+  };
+
+  // Acciones de Egresos (Requerimiento 2 y 3)
+  const abrirEditarEgreso = (egr: Egreso) => {
+    setEgresoEdit(egr);
+    setEgrCat(egr.categoria);
+    setEgrConcepto(egr.concepto);
+    setEgrFecha(egr.fecha);
+    setEgrProv(egr.proveedor || '');
+    setEgrMoneda(egr.moneda_original);
+    setEgrMonto(egr.monto_original);
+    setEgrTasaUsd(egr.tasa_a_usd);
+    setEgrTasaArs(egr.tasa_a_ars);
+    setModalEgreso(true);
+  };
+
+  const abrirNuevoEgreso = () => {
+    setEgresoEdit(null);
+    setEgrCat('PUBLICIDAD');
+    setEgrConcepto('');
+    setEgrFecha(new Date().toISOString().split('T')[0]);
+    setEgrProv('');
+    setEgrMoneda('USD');
+    setEgrMonto(50);
+    setEgrTasaUsd(1.0);
+    setEgrTasaArs(cotizacionLive?.usd_blue_venta || 1449.58);
+    setModalEgreso(true);
+  };
+
+  const eliminarEgreso = (egr: Egreso) => {
+    if (
+      window.confirm(
+        `¿Seguro que deseas eliminar el egreso ${egr.concepto} (${egr.moneda_original} ${egr.monto_original})? Esta acción quedará registrada en Auditoría.`
+      )
+    ) {
+      setEgresos((prev) => prev.filter((x) => x.id !== egr.id));
+      registrarLogAuditoria(
+        'EGRESOS',
+        'ELIMINACION_EGRESO',
+        `Eliminación del egreso #${egr.id}: ${egr.concepto} (${egr.moneda_original} ${egr.monto_original})`,
+        `${egr.moneda_original} ${egr.monto_original}`,
+        '0'
+      );
+    }
   };
 
   // ==============================================================================
@@ -836,6 +1030,237 @@ export default function CRMApp() {
     };
   }, [ingresos, egresos, alumnas, mapaPaises, dashFiltroMes, dashFiltroMoneda, dashFiltroPais, dashFiltroTipo, dashFiltroCatEgreso]);
 
+  // Auditoría Filtrada (Requerimiento 3)
+  const logsAuditoriaFiltrados = useMemo(() => {
+    return logsAuditoria.filter((log) => {
+      const q = busquedaAuditoria.toLowerCase();
+      const matchBusqueda =
+        log.detalle.toLowerCase().includes(q) ||
+        log.admin_email.toLowerCase().includes(q) ||
+        log.tipo_accion.toLowerCase().includes(q);
+
+      const matchModulo = filtroModuloAuditoria === 'todos' || log.modulo === filtroModuloAuditoria;
+      const matchAccion = filtroAccionAuditoria === 'todas' || log.tipo_accion === filtroAccionAuditoria;
+
+      return matchBusqueda && matchModulo && matchAccion;
+    });
+  }, [logsAuditoria, busquedaAuditoria, filtroModuloAuditoria, filtroAccionAuditoria]);
+
+  // ==============================================================================
+  // FUNCIONES DE EXPORTACIÓN A EXCEL Y PDF (REQUERIMIENTO 4)
+  // ==============================================================================
+
+  const exportarAlumnasExcel = () => {
+    const columnas = ['Código', 'Nombre Completo', 'Email', 'Teléfono WhatsApp', 'País', 'Moneda', 'Cuota Pactada', 'Día Cobro', 'Estado', 'Notas'];
+    const filas = alumnasFiltradas.map((a) => {
+      const p = mapaPaises.get(a.pais_id);
+      return [
+        a.codigo,
+        a.nombre_completo,
+        a.email || '—',
+        a.telefono_whatsapp || '—',
+        p?.nombre || '—',
+        a.moneda_preferida,
+        a.cuota_mensual,
+        a.dia_de_pago || 1,
+        a.activa === 1 ? 'Activa' : 'Inactiva',
+        a.notas || '',
+      ];
+    });
+    exportarAExcel('TotalHIIT_Alumnas', 'Padrón Oficial de Alumnas', columnas, filas);
+  };
+
+  const exportarAlumnasPDF = () => {
+    const columnas = ['Código', 'Nombre Completo', 'Email', 'Teléfono', 'País', 'Moneda', 'Cuota', 'Día', 'Estado'];
+    const filas = alumnasFiltradas.map((a) => {
+      const p = mapaPaises.get(a.pais_id);
+      return [
+        a.codigo,
+        a.nombre_completo,
+        a.email || '—',
+        a.telefono_whatsapp || '—',
+        p?.nombre || '—',
+        a.moneda_preferida,
+        `${a.moneda_preferida === 'EUR' ? '€' : '$'}${a.cuota_mensual}`,
+        `Día ${a.dia_de_pago || 1}`,
+        a.activa === 1 ? 'Activa' : 'Inactiva',
+      ];
+    });
+    exportarAPDF(
+      'Padrón Oficial de Alumnas TotalHIIT',
+      `Reporte con ${alumnasFiltradas.length} alumnas registradas`,
+      columnas,
+      filas,
+      [
+        { etiqueta: 'Total Alumnas', valor: String(alumnasFiltradas.length) },
+        { etiqueta: 'Activas', valor: String(alumnasFiltradas.filter((x) => x.activa === 1).length) },
+        { etiqueta: 'Inactivas', valor: String(alumnasFiltradas.filter((x) => x.activa === 0).length) },
+      ]
+    );
+  };
+
+  const exportarVencimientosExcel = () => {
+    const columnas = ['Código', 'Alumna', 'País', 'Día de Cobro', 'Cuota Estimada', 'Moneda', 'Días Restantes', 'Estado Vencimiento', 'Último Pago'];
+    const filas = alertasVencimiento.map((item) => [
+      item.alumna.codigo,
+      item.alumna.nombre_completo,
+      item.pais?.nombre || '—',
+      item.diaCobro,
+      item.montoEst,
+      item.moneda,
+      item.diasRestantes,
+      item.estado,
+      item.ultimoMesTexto || 'Pendiente',
+    ]);
+    exportarAExcel('TotalHIIT_Vencimientos', 'Ciclos de Cobro y Vencimientos', columnas, filas);
+  };
+
+  const exportarVencimientosPDF = () => {
+    const columnas = ['Cód', 'Alumna', 'País', 'Día Cobro', 'Cuota', 'Estado', 'Último Período Pagado'];
+    const filas = alertasVencimiento.map((item) => [
+      item.alumna.codigo,
+      item.alumna.nombre_completo,
+      item.pais?.nombre || '—',
+      `Día ${item.diaCobro}`,
+      `${item.moneda === 'EUR' ? '€' : '$'}${item.montoEst}`,
+      item.estado === 'VENCE_HOY' ? 'VENCE HOY' : item.estado === 'VENCIDO' ? `VENCIDO (${Math.abs(item.diasRestantes)}d)` : item.estado === 'PROXIMO' ? `PRÓXIMO (${item.diasRestantes}d)` : 'AL DÍA',
+      item.ultimoMesTexto || 'Sin registro',
+    ]);
+    exportarAPDF(
+      'Reporte de Vencimientos y Ciclos de Cobro',
+      `Monitoreo de cobranzas y membresías activas`,
+      columnas,
+      filas,
+      [
+        { etiqueta: 'Total Alumnas', valor: String(alertasVencimiento.length) },
+        { etiqueta: 'Vence Hoy / Vencidas', valor: String(alertasVencimiento.filter((x) => x.estado === 'VENCE_HOY' || x.estado === 'VENCIDO').length) },
+        { etiqueta: 'Próximas (7 días)', valor: String(alertasVencimiento.filter((x) => x.estado === 'PROXIMO').length) },
+      ]
+    );
+  };
+
+  const exportarIngresosExcel = () => {
+    const columnas = ['ID', 'Fecha Cobro', 'Período', 'Tipo Ingreso', 'Alumna / Marca', 'Concepto', 'Moneda', 'Monto Original', 'Equiv USD', 'Equiv ARS', 'Método'];
+    const filas = ingresosFiltrados.map((i) => [
+      i.id,
+      i.fecha_pago,
+      i.mes_pagado_label || `${i.mes_periodo || ''}/${i.anio_periodo || ''}`,
+      i.tipo_ingreso,
+      i.alumna_codigo || i.cliente_o_marca || '—',
+      i.concepto,
+      i.moneda_original,
+      i.monto_original,
+      i.usd_equivalente,
+      i.ars_equivalente,
+      i.metodo_pago,
+    ]);
+    exportarAExcel('TotalHIIT_Ingresos', 'Libro Oficial de Ingresos', columnas, filas);
+  };
+
+  const exportarIngresosPDF = () => {
+    const columnas = ['Fecha', 'Período', 'Tipo', 'Detalle / Alumna', 'Monto Original', 'Equiv USD', 'Equiv ARS'];
+    const filas = ingresosFiltrados.map((i) => [
+      i.fecha_pago,
+      i.mes_pagado_label || `${i.mes_periodo}/${i.anio_periodo}`,
+      i.tipo_ingreso === 'CUOTA_ALUMNA' ? 'Cuota' : i.tipo_ingreso === 'CONTRATACION_APP' ? 'App' : i.tipo_ingreso === 'COLABORACION_MARCA' ? 'Marca' : 'Otro',
+      i.concepto,
+      `${i.moneda_original === 'EUR' ? '€' : '$'}${i.monto_original} ${i.moneda_original}`,
+      `$${i.usd_equivalente.toFixed(2)}`,
+      `$${i.ars_equivalente.toLocaleString('es-ES', { maximumFractionDigits: 0 })}`,
+    ]);
+    exportarAPDF(
+      'Libro Oficial de Ingresos TotalHIIT',
+      `Reporte financiero filtrado (${ingresosFiltrados.length} operaciones)`,
+      columnas,
+      filas,
+      [
+        { etiqueta: 'Total Operaciones', valor: String(ingresosFiltrados.length) },
+        { etiqueta: 'Total USD', valor: `$${totalesIngresosFiltrados.usd.toFixed(2)} USD` },
+        { etiqueta: 'Total ARS', valor: `$${totalesIngresosFiltrados.ars.toLocaleString('es-ES', { maximumFractionDigits: 0 })} ARS` },
+      ]
+    );
+  };
+
+  const exportarEgresosExcel = () => {
+    const columnas = ['ID', 'Fecha', 'Período', 'Categoría', 'Concepto', 'Proveedor', 'Moneda', 'Monto Original', 'Equiv USD', 'Equiv ARS'];
+    const filas = egresosFiltrados.map((e) => [
+      e.id,
+      e.fecha,
+      `${e.mes_periodo || ''}/${e.anio_periodo || ''}`,
+      e.categoria,
+      e.concepto,
+      e.proveedor || '—',
+      e.moneda_original,
+      e.monto_original,
+      e.usd_equivalente,
+      e.ars_equivalente,
+    ]);
+    exportarAExcel('TotalHIIT_Egresos', 'Libro de Egresos y Gastos', columnas, filas);
+  };
+
+  const exportarEgresosPDF = () => {
+    const columnas = ['Fecha', 'Categoría', 'Concepto', 'Proveedor', 'Monto Original', 'Equiv USD', 'Equiv ARS'];
+    const filas = egresosFiltrados.map((e) => [
+      e.fecha,
+      e.categoria,
+      e.concepto,
+      e.proveedor || '—',
+      `${e.moneda_original === 'EUR' ? '€' : '$'}${e.monto_original} ${e.moneda_original}`,
+      `$${e.usd_equivalente.toFixed(2)}`,
+      `$${e.ars_equivalente.toLocaleString('es-ES', { maximumFractionDigits: 0 })}`,
+    ]);
+    exportarAPDF(
+      'Libro de Egresos Operativos TotalHIIT',
+      `Reporte de gastos y egresos (${egresosFiltrados.length} partidas)`,
+      columnas,
+      filas,
+      [
+        { etiqueta: 'Total Gastos', valor: String(egresosFiltrados.length) },
+        { etiqueta: 'Total USD', valor: `$${totalesEgresosFiltrados.usd.toFixed(2)} USD` },
+        { etiqueta: 'Total ARS', valor: `$${totalesEgresosFiltrados.ars.toLocaleString('es-ES', { maximumFractionDigits: 0 })} ARS` },
+      ]
+    );
+  };
+
+  const exportarAuditoriaExcel = () => {
+    const columnas = ['Fecha y Hora', 'Admin Responsable', 'Módulo', 'Acción', 'Detalle Operación', 'Valor Previo', 'Valor Nuevo'];
+    const filas = logsAuditoriaFiltrados.map((l) => [
+      l.fecha_hora,
+      l.admin_email,
+      l.modulo,
+      l.tipo_accion,
+      l.detalle,
+      l.monto_previo || '—',
+      l.monto_nuevo || '—',
+    ]);
+    exportarAExcel('TotalHIIT_Auditoria_Logs', 'Auditoría y Logs del Sistema (Solo Lectura)', columnas, filas);
+  };
+
+  const exportarAuditoriaPDF = () => {
+    const columnas = ['Fecha / Hora', 'Admin', 'Módulo', 'Acción', 'Detalle Operación', 'Valor Previo', 'Valor Nuevo'];
+    const filas = logsAuditoriaFiltrados.map((l) => [
+      l.fecha_hora,
+      l.admin_email,
+      l.modulo,
+      l.tipo_accion,
+      l.detalle,
+      l.monto_previo || '—',
+      l.monto_nuevo || '—',
+    ]);
+    exportarAPDF(
+      'Registro Oficial de Auditoría y Seguridad',
+      `Historial inmutable de modificaciones y eliminaciones (${logsAuditoriaFiltrados.length} registros)`,
+      columnas,
+      filas,
+      [
+        { etiqueta: 'Total Eventos', valor: String(logsAuditoriaFiltrados.length) },
+        { etiqueta: 'Ediciones', valor: String(logsAuditoriaFiltrados.filter((x) => x.tipo_accion.startsWith('EDICION')).length) },
+        { etiqueta: 'Eliminaciones', valor: String(logsAuditoriaFiltrados.filter((x) => x.tipo_accion.startsWith('ELIMINACION')).length) },
+        { etiqueta: 'Cambios Cuota', valor: String(logsAuditoriaFiltrados.filter((x) => x.tipo_accion === 'CAMBIO_CUOTA_ALUMNA').length) },
+      ]
+    );
+  };
+
   // Manejo Login
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -1130,6 +1555,7 @@ export default function CRMApp() {
             { id: 'ingresos', label: '💵 Ingresos', count: ingresos.length },
             { id: 'egresos', label: '📉 Egresos', count: egresos.length },
             { id: 'dashboard', label: '📊 Métricas & P&L' },
+            { id: 'auditoria', label: '🛡️ Auditoría', count: logsAuditoria.length },
             { id: 'paises', label: '🌍 Países & Divisas', count: paises.length },
             { id: 'seguridad', label: '🔐 Clave' },
           ].map((item) => (
@@ -1210,26 +1636,44 @@ export default function CRMApp() {
                 </select>
               </div>
 
-              <button
-                onClick={() => {
-                  setAlumnaEdit(null);
-                  setFormCod((alumnas.length + 1).toString().padStart(4, '0'));
-                  setFormNombre('');
-                  setFormEmail('');
-                  setFormTel('');
-                  setFormPais(1);
-                  setFormMoneda('USD');
-                  setFormCuota(40);
-                  setFormDia(1);
-                  setFormActiva(1);
-                  setFormNotas('');
-                  setModalAlumna(true);
-                }}
-                className="flex items-center justify-center gap-1.5 rounded-xl bg-rose-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-rose-700 transition"
-              >
-                <Plus size={15} />
-                <span>Nueva Alumna</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={exportarAlumnasExcel}
+                  className="flex items-center justify-center gap-1.5 rounded-xl border border-stone-300 bg-white px-3 py-2 text-xs font-bold text-stone-700 shadow-xs hover:bg-stone-50 transition cursor-pointer"
+                  title="Exportar Alumnas a Excel"
+                >
+                  <FileSpreadsheet size={14} className="text-emerald-600" />
+                  <span>Excel</span>
+                </button>
+                <button
+                  onClick={exportarAlumnasPDF}
+                  className="flex items-center justify-center gap-1.5 rounded-xl border border-stone-300 bg-white px-3 py-2 text-xs font-bold text-stone-700 shadow-xs hover:bg-stone-50 transition cursor-pointer"
+                  title="Exportar Alumnas a PDF / Imprimir"
+                >
+                  <Printer size={14} className="text-rose-600" />
+                  <span>PDF</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setAlumnaEdit(null);
+                    setFormCod((alumnas.length + 1).toString().padStart(4, '0'));
+                    setFormNombre('');
+                    setFormEmail('');
+                    setFormTel('');
+                    setFormPais(1);
+                    setFormMoneda('USD');
+                    setFormCuota(40);
+                    setFormDia(1);
+                    setFormActiva(1);
+                    setFormNotas('');
+                    setModalAlumna(true);
+                  }}
+                  className="flex items-center justify-center gap-1.5 rounded-xl bg-rose-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-rose-700 transition cursor-pointer"
+                >
+                  <Plus size={15} />
+                  <span>Nueva Alumna</span>
+                </button>
+              </div>
             </div>
 
             {/* Listado de Alumnas */}
@@ -1339,11 +1783,18 @@ export default function CRMApp() {
                             </button>
                             <button
                               onClick={() => {
-                                if (window.confirm(`¿Seguro que deseas eliminar a ${a.nombre_completo}?`)) {
+                                if (window.confirm(`¿Seguro que deseas eliminar a ${a.nombre_completo}? Esta acción quedará registrada en Auditoría.`)) {
                                   setAlumnas((prev) => prev.filter((x) => x.codigo !== a.codigo));
+                                  registrarLogAuditoria(
+                                    'ALUMNAS',
+                                    'CAMBIO_CUOTA_ALUMNA',
+                                    `Eliminación del padrón de la alumna ${a.nombre_completo} (${a.codigo})`,
+                                    `${a.moneda_preferida} ${a.cuota_mensual}`,
+                                    '0 (Alumna eliminada)'
+                                  );
                                 }
                               }}
-                              className="rounded-lg bg-red-50 p-1.5 text-red-600 hover:bg-red-100"
+                              className="rounded-lg bg-red-50 p-1.5 text-red-600 hover:bg-red-100 cursor-pointer"
                               title="Eliminar Alumna"
                             >
                               <Trash2 size={13} />
@@ -1375,13 +1826,31 @@ export default function CRMApp() {
                 </p>
               </div>
 
-              <button
-                onClick={() => setTab('recordatorios')}
-                className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-emerald-700 shrink-0"
-              >
-                <Send size={14} />
-                <span>⚡ Enviar Recordatorios Masivos</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={exportarVencimientosExcel}
+                  className="flex items-center justify-center gap-1.5 rounded-xl border border-stone-300 bg-white px-3 py-2 text-xs font-bold text-stone-700 shadow-xs hover:bg-stone-50 transition cursor-pointer"
+                  title="Exportar Vencimientos a Excel"
+                >
+                  <FileSpreadsheet size={14} className="text-emerald-600" />
+                  <span>Excel</span>
+                </button>
+                <button
+                  onClick={exportarVencimientosPDF}
+                  className="flex items-center justify-center gap-1.5 rounded-xl border border-stone-300 bg-white px-3 py-2 text-xs font-bold text-stone-700 shadow-xs hover:bg-stone-50 transition cursor-pointer"
+                  title="Exportar Vencimientos a PDF / Imprimir"
+                >
+                  <Printer size={14} className="text-rose-600" />
+                  <span>PDF</span>
+                </button>
+                <button
+                  onClick={() => setTab('recordatorios')}
+                  className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-emerald-700 shrink-0 cursor-pointer"
+                >
+                  <Send size={14} />
+                  <span>⚡ Enviar Recordatorios Masivos</span>
+                </button>
+              </div>
             </div>
 
             {/* Barra de Filtros y Ordenamiento */}
@@ -1532,15 +2001,17 @@ export default function CRMApp() {
                         <span>Recordatorio</span>
                       </button>
                       {al.email && (
-                        <a
-                          href={`mailto:${al.email}?subject=Recordatorio TotalHIIT&body=${encodeURIComponent(
-                            construirMensaje(plantillaMsg, al, item.montoEst, item.moneda, item.diaCobro, item.diasRestantes, item.estado)
-                          )}`}
-                          className="rounded-xl border border-stone-200 bg-stone-50 p-2 text-stone-700 hover:bg-stone-100 transition flex items-center justify-center"
-                          title="Enviar por Correo"
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const cuerpo = construirMensaje(plantillaMsg, al, item.montoEst, item.moneda, item.diaCobro, item.diasRestantes, item.estado);
+                            abrirModalEmailBox(al.email || '', al.nombre_completo, `Recordatorio TotalHIIT - ${al.nombre_completo}`, cuerpo);
+                          }}
+                          className="rounded-xl border border-stone-200 bg-stone-50 p-2 text-stone-700 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 transition flex items-center justify-center cursor-pointer"
+                          title="Copiar / Enviar por Email"
                         >
                           <Mail size={14} />
-                        </a>
+                        </button>
                       )}
                     </div>
                   </div>
@@ -1681,7 +2152,7 @@ export default function CRMApp() {
                     if (tel) {
                       window.open(`https://wa.me/${tel}?text=${encodeURIComponent(msg)}`, '_blank');
                     } else if (al.email) {
-                      window.location.href = `mailto:${al.email}?subject=Recordatorio TotalHIIT&body=${encodeURIComponent(msg)}`;
+                      abrirModalEmailBox(al.email, al.nombre_completo, `Recordatorio TotalHIIT - ${al.nombre_completo}`, msg);
                     } else {
                       alert(`La alumna ${al.nombre_completo} no tiene teléfono ni email registrado.`);
                     }
@@ -1788,17 +2259,19 @@ export default function CRMApp() {
                               WhatsApp
                             </button>
                             {al.email && (
-                              <a
-                                href={`mailto:${al.email}?subject=Recordatorio TotalHIIT&body=${encodeURIComponent(
-                                  construirMensaje(plantillaMsg, al, item.montoEst, item.moneda, item.diaCobro, item.diasRestantes, item.estado)
-                                )}`}
-                                onClick={() => setEnviadosSesion((prev) => new Set(prev).add(al.codigo))}
-                                className="rounded-lg bg-stone-100 px-2 py-1 text-stone-700 font-bold hover:bg-stone-200"
-                                title="Enviar por Email"
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const msg = construirMensaje(plantillaMsg, al, item.montoEst, item.moneda, item.diaCobro, item.diasRestantes, item.estado);
+                                  abrirModalEmailBox(al.email || '', al.nombre_completo, `Recordatorio TotalHIIT - ${al.nombre_completo}`, msg);
+                                  setEnviadosSesion((prev) => new Set(prev).add(al.codigo));
+                                }}
+                                className="rounded-lg bg-stone-100 px-2 py-1 text-stone-700 font-bold hover:bg-stone-200 cursor-pointer"
+                                title="Copiar / Enviar por Email"
                               >
                                 <Mail size={13} className="inline mr-1" />
                                 Email
-                              </a>
+                              </button>
                             )}
                           </td>
                         </tr>
@@ -1823,13 +2296,31 @@ export default function CRMApp() {
                   Cuotas de alumnas, contrataciones de App, patrocinios de marca y otros ingresos.
                 </p>
               </div>
-              <button
-                onClick={() => setModalIngreso(true)}
-                className="flex items-center justify-center gap-1.5 rounded-xl bg-rose-600 px-4 py-2 text-xs font-bold text-white hover:bg-rose-700 shadow-xs"
-              >
-                <Plus size={15} />
-                <span>Registrar Ingreso</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={exportarIngresosExcel}
+                  className="flex items-center justify-center gap-1.5 rounded-xl border border-stone-300 bg-white px-3 py-2 text-xs font-bold text-stone-700 shadow-xs hover:bg-stone-50 transition cursor-pointer"
+                  title="Exportar Ingresos a Excel"
+                >
+                  <FileSpreadsheet size={14} className="text-emerald-600" />
+                  <span>Excel</span>
+                </button>
+                <button
+                  onClick={exportarIngresosPDF}
+                  className="flex items-center justify-center gap-1.5 rounded-xl border border-stone-300 bg-white px-3 py-2 text-xs font-bold text-stone-700 shadow-xs hover:bg-stone-50 transition cursor-pointer"
+                  title="Exportar Ingresos a PDF / Imprimir"
+                >
+                  <Printer size={14} className="text-rose-600" />
+                  <span>PDF</span>
+                </button>
+                <button
+                  onClick={abrirNuevoIngreso}
+                  className="flex items-center justify-center gap-1.5 rounded-xl bg-rose-600 px-4 py-2 text-xs font-bold text-white hover:bg-rose-700 shadow-xs transition cursor-pointer"
+                >
+                  <Plus size={15} />
+                  <span>Registrar Ingreso</span>
+                </button>
+              </div>
             </div>
 
             {/* Barra de Filtros Múltiples */}
@@ -2003,17 +2494,23 @@ export default function CRMApp() {
                           <td className="py-3 px-3.5 text-stone-600 whitespace-nowrap">
                             ${ing.ars_equivalente.toLocaleString('es-ES', { maximumFractionDigits: 0 })}
                           </td>
-                          <td className="py-3 px-3.5 text-right">
-                            <button
-                              onClick={() => {
-                                if (window.confirm('¿Seguro que deseas eliminar este ingreso?')) {
-                                  setIngresos((prev) => prev.filter((x) => x.id !== ing.id));
-                                }
-                              }}
-                              className="rounded-lg p-1.5 text-stone-400 hover:text-red-600 hover:bg-red-50"
-                            >
-                              <Trash2 size={13} />
-                            </button>
+                          <td className="py-3 px-3.5 text-right whitespace-nowrap">
+                            <div className="flex items-center justify-end gap-1">
+                              <button
+                                onClick={() => abrirEditarIngreso(ing)}
+                                className="rounded-lg p-1.5 text-stone-400 hover:text-blue-600 hover:bg-blue-50 cursor-pointer"
+                                title="Editar Ingreso"
+                              >
+                                <Edit2 size={13} />
+                              </button>
+                              <button
+                                onClick={() => eliminarIngreso(ing)}
+                                className="rounded-lg p-1.5 text-stone-400 hover:text-red-600 hover:bg-red-50 cursor-pointer"
+                                title="Eliminar Ingreso"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -2037,13 +2534,31 @@ export default function CRMApp() {
                   Publicidad Meta/Google, reposición de equipos, software, servidores e impuestos.
                 </p>
               </div>
-              <button
-                onClick={() => setModalEgreso(true)}
-                className="flex items-center justify-center gap-1.5 rounded-xl bg-stone-800 px-4 py-2 text-xs font-bold text-white hover:bg-stone-900 shadow-xs"
-              >
-                <Plus size={15} />
-                <span>Declarar Egreso</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={exportarEgresosExcel}
+                  className="flex items-center justify-center gap-1.5 rounded-xl border border-stone-300 bg-white px-3 py-2 text-xs font-bold text-stone-700 shadow-xs hover:bg-stone-50 transition cursor-pointer"
+                  title="Exportar Egresos a Excel"
+                >
+                  <FileSpreadsheet size={14} className="text-emerald-600" />
+                  <span>Excel</span>
+                </button>
+                <button
+                  onClick={exportarEgresosPDF}
+                  className="flex items-center justify-center gap-1.5 rounded-xl border border-stone-300 bg-white px-3 py-2 text-xs font-bold text-stone-700 shadow-xs hover:bg-stone-50 transition cursor-pointer"
+                  title="Exportar Egresos a PDF / Imprimir"
+                >
+                  <Printer size={14} className="text-rose-600" />
+                  <span>PDF</span>
+                </button>
+                <button
+                  onClick={abrirNuevoEgreso}
+                  className="flex items-center justify-center gap-1.5 rounded-xl bg-stone-800 px-4 py-2 text-xs font-bold text-white hover:bg-stone-900 shadow-xs transition cursor-pointer"
+                >
+                  <Plus size={15} />
+                  <span>Declarar Egreso</span>
+                </button>
+              </div>
             </div>
 
             {/* Barra de Filtros Egresos */}
@@ -2155,17 +2670,23 @@ export default function CRMApp() {
                         <td className="py-3 px-3.5 font-bold text-red-600 whitespace-nowrap">
                           ${egr.usd_equivalente.toFixed(2)}
                         </td>
-                        <td className="py-3 px-3.5 text-right">
-                          <button
-                            onClick={() => {
-                              if (window.confirm('¿Seguro que deseas eliminar este egreso?')) {
-                                setEgresos((prev) => prev.filter((x) => x.id !== egr.id));
-                              }
-                            }}
-                            className="rounded-lg p-1.5 text-stone-400 hover:text-red-600 hover:bg-red-50"
-                          >
-                            <Trash2 size={13} />
-                          </button>
+                        <td className="py-3 px-3.5 text-right whitespace-nowrap">
+                          <div className="flex items-center justify-end gap-1">
+                            <button
+                              onClick={() => abrirEditarEgreso(egr)}
+                              className="rounded-lg p-1.5 text-stone-400 hover:text-blue-600 hover:bg-blue-50 cursor-pointer"
+                              title="Editar Egreso"
+                            >
+                              <Edit2 size={13} />
+                            </button>
+                            <button
+                              onClick={() => eliminarEgreso(egr)}
+                              className="rounded-lg p-1.5 text-stone-400 hover:text-red-600 hover:bg-red-50 cursor-pointer"
+                              title="Eliminar Egreso"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -2474,6 +2995,179 @@ export default function CRMApp() {
         )}
 
         {/* ============================================================== */}
+        {/* PESTAÑA: AUDITORÍA & LOGS (SOLO LECTURA - REQUERIMIENTO 3)      */}
+        {/* ============================================================== */}
+        {tab === 'auditoria' && (
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-bold text-stone-900 flex items-center gap-1.5">
+                  <ShieldCheck size={16} className="text-rose-600" />
+                  <span>Historial de Auditoría & Logs del Sistema</span>
+                  <span className="rounded-full bg-stone-100 border border-stone-200 px-2 py-0.5 text-[10px] font-bold text-stone-600">
+                    🔒 Solo Lectura
+                  </span>
+                </h3>
+                <p className="text-xs text-stone-500">
+                  Registro cronológico estricto e inmutable de modificaciones y eliminaciones en ingresos, egresos y cambios de cuotas de alumnas.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={exportarAuditoriaExcel}
+                  className="flex items-center justify-center gap-1.5 rounded-xl border border-stone-300 bg-white px-3 py-2 text-xs font-bold text-stone-700 shadow-xs hover:bg-stone-50 transition cursor-pointer"
+                  title="Exportar Registro de Auditoría a Excel"
+                >
+                  <FileSpreadsheet size={14} className="text-emerald-600" />
+                  <span>Excel</span>
+                </button>
+                <button
+                  onClick={exportarAuditoriaPDF}
+                  className="flex items-center justify-center gap-1.5 rounded-xl border border-stone-300 bg-white px-3 py-2 text-xs font-bold text-stone-700 shadow-xs hover:bg-stone-50 transition cursor-pointer"
+                  title="Exportar Registro de Auditoría a PDF / Imprimir"
+                >
+                  <Printer size={14} className="text-rose-600" />
+                  <span>PDF</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Barra de Filtros Auditoría */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 rounded-2xl border border-stone-200 bg-white p-3 shadow-xs">
+              <div>
+                <label className="block text-[10px] font-bold text-stone-400 uppercase mb-0.5">Buscar en Detalle o Email</label>
+                <div className="relative">
+                  <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-stone-400" />
+                  <input
+                    type="text"
+                    placeholder="Buscar evento..."
+                    value={busquedaAuditoria}
+                    onChange={(e) => setBusquedaAuditoria(e.target.value)}
+                    className="w-full rounded-xl border border-stone-300 bg-white pl-7 pr-2 py-2 text-xs outline-none focus:border-rose-600"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-stone-400 uppercase mb-0.5">Módulo</label>
+                <select
+                  value={filtroModuloAuditoria}
+                  onChange={(e) => setFiltroModuloAuditoria(e.target.value)}
+                  className="w-full rounded-xl border border-stone-300 bg-white p-2 text-xs outline-none"
+                >
+                  <option value="todos">Todos los módulos</option>
+                  <option value="INGRESOS">💵 Ingresos</option>
+                  <option value="EGRESOS">📉 Egresos</option>
+                  <option value="ALUMNAS">👥 Alumnas</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-stone-400 uppercase mb-0.5">Tipo de Acción</label>
+                <select
+                  value={filtroAccionAuditoria}
+                  onChange={(e) => setFiltroAccionAuditoria(e.target.value)}
+                  className="w-full rounded-xl border border-stone-300 bg-white p-2 text-xs outline-none"
+                >
+                  <option value="todas">Todas las acciones</option>
+                  <option value="EDICION_INGRESO">✏️ Edición de Ingreso</option>
+                  <option value="ELIMINACION_INGRESO">🗑️ Eliminación de Ingreso</option>
+                  <option value="EDICION_EGRESO">✏️ Edición de Egreso</option>
+                  <option value="ELIMINACION_EGRESO">🗑️ Eliminación de Egreso</option>
+                  <option value="CAMBIO_CUOTA_ALUMNA">💰 Cambio Cuota Alumna</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Tabla de Logs de Auditoría */}
+            <div className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-xs">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="border-b border-stone-200 bg-stone-50 font-bold text-stone-600">
+                    <tr>
+                      <th className="py-3 px-3.5">Fecha y Hora</th>
+                      <th className="py-3 px-3.5">Admin Responsable</th>
+                      <th className="py-3 px-3.5">Módulo</th>
+                      <th className="py-3 px-3.5">Acción</th>
+                      <th className="py-3 px-3.5">Detalle de la Operación</th>
+                      <th className="py-3 px-3.5">Valor Previo</th>
+                      <th className="py-3 px-3.5">Valor Nuevo</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-stone-100">
+                    {logsAuditoriaFiltrados.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="py-8 text-center text-stone-400">
+                          No se encontraron registros de auditoría que coincidan con los filtros.
+                        </td>
+                      </tr>
+                    ) : (
+                      logsAuditoriaFiltrados.map((log) => {
+                        let badgeColor = 'bg-stone-100 text-stone-700';
+                        let badgeIcon = '📋';
+                        let accionLabel: string = log.tipo_accion;
+
+                        if (log.tipo_accion === 'EDICION_INGRESO') {
+                          badgeColor = 'bg-blue-50 text-blue-700 border border-blue-200';
+                          badgeIcon = '✏️';
+                          accionLabel = 'Edición Ingreso';
+                        } else if (log.tipo_accion === 'ELIMINACION_INGRESO') {
+                          badgeColor = 'bg-red-50 text-red-700 border border-red-200';
+                          badgeIcon = '🗑️';
+                          accionLabel = 'Eliminación Ingreso';
+                        } else if (log.tipo_accion === 'EDICION_EGRESO') {
+                          badgeColor = 'bg-blue-50 text-blue-700 border border-blue-200';
+                          badgeIcon = '✏️';
+                          accionLabel = 'Edición Egreso';
+                        } else if (log.tipo_accion === 'ELIMINACION_EGRESO') {
+                          badgeColor = 'bg-red-50 text-red-700 border border-red-200';
+                          badgeIcon = '🗑️';
+                          accionLabel = 'Eliminación Egreso';
+                        } else if (log.tipo_accion === 'CAMBIO_CUOTA_ALUMNA') {
+                          badgeColor = 'bg-amber-50 text-amber-800 border border-amber-200';
+                          badgeIcon = '💰';
+                          accionLabel = 'Cambio Cuota';
+                        }
+
+                        return (
+                          <tr key={log.id} className="hover:bg-stone-50/80 transition">
+                            <td className="py-3 px-3.5 font-mono text-[11px] text-stone-500 whitespace-nowrap">
+                              {log.fecha_hora}
+                            </td>
+                            <td className="py-3 px-3.5 font-mono text-stone-700 font-semibold whitespace-nowrap">
+                              {log.admin_email}
+                            </td>
+                            <td className="py-3 px-3.5 whitespace-nowrap">
+                              <span className="rounded-md bg-stone-100 px-2 py-0.5 text-[10px] font-bold text-stone-700">
+                                {log.modulo === 'INGRESOS' ? '💵 INGRESOS' : log.modulo === 'EGRESOS' ? '📉 EGRESOS' : '👥 ALUMNAS'}
+                              </span>
+                            </td>
+                            <td className="py-3 px-3.5 whitespace-nowrap">
+                              <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold flex items-center gap-1 w-fit ${badgeColor}`}>
+                                <span>{badgeIcon}</span>
+                                <span>{accionLabel}</span>
+                              </span>
+                            </td>
+                            <td className="py-3 px-3.5 text-stone-800 max-w-xs">{log.detalle}</td>
+                            <td className="py-3 px-3.5 font-mono text-stone-500 line-through whitespace-nowrap">
+                              {log.monto_previo || '—'}
+                            </td>
+                            <td className="py-3 px-3.5 font-mono font-bold text-stone-900 whitespace-nowrap">
+                              {log.monto_nuevo || '—'}
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ============================================================== */}
         {/* PESTAÑA: PAÍSES & MONEDAS (REQUERIMIENTO 2)                     */}
         {/* ============================================================== */}
         {tab === 'paises' && (
@@ -2675,6 +3369,15 @@ export default function CRMApp() {
                   activa: Number(formActiva),
                   notas: formNotas.trim() || undefined,
                 };
+                if (alumnaEdit && (alumnaEdit.cuota_mensual !== nueva.cuota_mensual || alumnaEdit.moneda_preferida !== nueva.moneda_preferida)) {
+                  registrarLogAuditoria(
+                    'ALUMNAS',
+                    'CAMBIO_CUOTA_ALUMNA',
+                    `Modificación de cuota mensual para ${nueva.nombre_completo} (${nueva.codigo})`,
+                    `${alumnaEdit.moneda_preferida} ${alumnaEdit.cuota_mensual}`,
+                    `${nueva.moneda_preferida} ${nueva.cuota_mensual}`
+                  );
+                }
                 setAlumnas((prev) => {
                   const sinActual = prev.filter((x) => x.codigo !== nueva.codigo);
                   return [...sinActual, nueva].sort((a, b) => a.codigo.localeCompare(b.codigo));
@@ -3067,13 +3770,17 @@ export default function CRMApp() {
               )}
 
               {alumnaMsg.email && (
-                <a
-                  href={`mailto:${alumnaMsg.email}?subject=Recordatorio TotalHIIT&body=${encodeURIComponent(textoMsg)}`}
-                  className="w-full rounded-xl bg-stone-100 py-2 text-center text-xs font-bold text-stone-800 hover:bg-stone-200 flex items-center justify-center gap-1.5"
+                <button
+                  type="button"
+                  onClick={() => {
+                    abrirModalEmailBox(alumnaMsg.email || '', alumnaMsg.nombre_completo, `Recordatorio TotalHIIT - ${alumnaMsg.nombre_completo}`, textoMsg);
+                    setModalMsg(false);
+                  }}
+                  className="w-full rounded-xl bg-stone-100 py-2 text-center text-xs font-bold text-stone-800 hover:bg-stone-200 flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <Mail size={15} />
-                  <span>Abrir en Correo</span>
-                </a>
+                  <span>Preparar / Copiar para Correo</span>
+                </button>
               )}
             </div>
           </div>
@@ -3081,13 +3788,13 @@ export default function CRMApp() {
       )}
 
       {/* ============================================================== */}
-      {/* MODAL REGISTRAR INGRESO                                        */}
+      {/* MODAL REGISTRAR / EDITAR INGRESO (REQUERIMIENTO 2)             */}
       {/* ============================================================== */}
       {modalIngreso && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
           <div className="w-full max-w-sm rounded-3xl bg-white p-5 shadow-2xl space-y-3 max-h-[90vh] overflow-y-auto text-xs">
             <div className="flex items-center justify-between border-b pb-2">
-              <h3 className="text-sm font-bold text-stone-900">Registrar Ingreso</h3>
+              <h3 className="text-sm font-bold text-stone-900">{ingresoEdit ? 'Editar Ingreso' : 'Registrar Ingreso'}</h3>
               <button onClick={() => setModalIngreso(false)} className="text-stone-400 hover:text-stone-600">✕</button>
             </div>
 
@@ -3095,6 +3802,39 @@ export default function CRMApp() {
               onSubmit={(e) => {
                 e.preventDefault();
                 const montoMes = Number(ingMonto) || 0;
+
+                if (ingresoEdit) {
+                  const labelMes = `${NOMBRES_MESES[ingMesPeriodo - 1]} ${ingAnioPeriodo}`;
+                  const itemActualizado: Ingreso = {
+                    ...ingresoEdit,
+                    tipo_ingreso: ingTipo,
+                    alumna_codigo: ingTipo === 'CUOTA_ALUMNA' ? ingAlumnaCod : undefined,
+                    cliente_o_marca: ingTipo !== 'CUOTA_ALUMNA' ? ingClienteMarca : undefined,
+                    concepto: ingConcepto,
+                    fecha_pago: ingFecha,
+                    moneda_original: ingMoneda,
+                    monto_original: montoMes,
+                    tasa_a_usd: ingTasaUsd,
+                    tasa_a_ars: ingTasaArs,
+                    usd_equivalente: Math.round(montoMes * ingTasaUsd * 100) / 100,
+                    ars_equivalente: Math.round(montoMes * ingTasaArs * 100) / 100,
+                    mes_periodo: ingMesPeriodo,
+                    anio_periodo: ingAnioPeriodo,
+                    mes_pagado_label: labelMes,
+                    metodo_pago: ingMetodo,
+                  };
+                  setIngresos((prev) => prev.map((x) => (x.id === ingresoEdit.id ? itemActualizado : x)));
+                  registrarLogAuditoria(
+                    'INGRESOS',
+                    'EDICION_INGRESO',
+                    `Edición del ingreso #${ingresoEdit.id}: ${ingConcepto}`,
+                    `${ingresoEdit.moneda_original} ${ingresoEdit.monto_original}`,
+                    `${ingMoneda} ${montoMes}`
+                  );
+                  setModalIngreso(false);
+                  return;
+                }
+
                 const cantMeses = ingTipo === 'CUOTA_ALUMNA' ? Math.max(Number(ingMesesAdelantados) || 1, 1) : 1;
                 const nuevos: Ingreso[] = [];
 
@@ -3352,7 +4092,7 @@ export default function CRMApp() {
                   type="submit"
                   className="flex-1 rounded-xl bg-rose-600 py-2 font-bold text-white hover:bg-rose-700"
                 >
-                  Guardar
+                  {ingresoEdit ? 'Guardar Cambios' : 'Guardar'}
                 </button>
               </div>
             </form>
@@ -3361,13 +4101,13 @@ export default function CRMApp() {
       )}
 
       {/* ============================================================== */}
-      {/* MODAL REGISTRAR EGRESO                                         */}
+      {/* MODAL REGISTRAR / EDITAR EGRESO (REQUERIMIENTO 2)              */}
       {/* ============================================================== */}
       {modalEgreso && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
           <div className="w-full max-w-sm rounded-3xl bg-white p-5 shadow-2xl space-y-3 max-h-[90vh] overflow-y-auto text-xs">
             <div className="flex items-center justify-between border-b pb-2">
-              <h3 className="text-sm font-bold text-stone-900">Declarar Egreso</h3>
+              <h3 className="text-sm font-bold text-stone-900">{egresoEdit ? 'Editar Egreso' : 'Declarar Egreso'}</h3>
               <button onClick={() => setModalEgreso(false)} className="text-stone-400 hover:text-stone-600">✕</button>
             </div>
 
@@ -3375,6 +4115,35 @@ export default function CRMApp() {
               onSubmit={(e) => {
                 e.preventDefault();
                 const monto = Number(egrMonto) || 0;
+
+                if (egresoEdit) {
+                  const itemActualizado: Egreso = {
+                    ...egresoEdit,
+                    categoria: egrCat,
+                    concepto: egrConcepto,
+                    fecha: egrFecha,
+                    proveedor: egrProv,
+                    moneda_original: egrMoneda,
+                    monto_original: monto,
+                    tasa_a_usd: egrTasaUsd,
+                    tasa_a_ars: egrTasaArs,
+                    usd_equivalente: Math.round(monto * egrTasaUsd * 100) / 100,
+                    ars_equivalente: Math.round(monto * egrTasaArs * 100) / 100,
+                    mes_periodo: Number(egrFecha.split('-')[1]) || 6,
+                    anio_periodo: Number(egrFecha.split('-')[0]) || 2026,
+                  };
+                  setEgresos((prev) => prev.map((x) => (x.id === egresoEdit.id ? itemActualizado : x)));
+                  registrarLogAuditoria(
+                    'EGRESOS',
+                    'EDICION_EGRESO',
+                    `Edición de egreso #${egresoEdit.id}: ${egrConcepto}`,
+                    `${egresoEdit.moneda_original} ${egresoEdit.monto_original}`,
+                    `${egrMoneda} ${monto}`
+                  );
+                  setModalEgreso(false);
+                  return;
+                }
+
                 const nuevo: Egreso = {
                   id: `egr-${Date.now()}`,
                   categoria: egrCat,
@@ -3489,10 +4258,160 @@ export default function CRMApp() {
                   type="submit"
                   className="flex-1 rounded-xl bg-stone-800 py-2 font-bold text-white hover:bg-stone-900"
                 >
-                  Guardar
+                  {egresoEdit ? 'Guardar Cambios' : 'Guardar'}
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================== */}
+      {/* MODAL COPIAR RECORDATORIO POR EMAIL (REQUERIMIENTO 1)          */}
+      {/* ============================================================== */}
+      {modalEmailBox && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto text-xs">
+            <div className="flex items-center justify-between border-b pb-2">
+              <div className="flex items-center gap-2">
+                <Mail size={16} className="text-rose-600" />
+                <h3 className="text-sm font-bold text-stone-900">
+                  Enviar Recordatorio por Email — {emailAlumnaNombre}
+                </h3>
+              </div>
+              <button
+                onClick={() => setModalEmailBox(false)}
+                className="text-stone-400 hover:text-stone-600 text-sm cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs text-stone-500">
+              Copia los datos con un solo clic para pegarlos en tu cliente de correo favorito (Gmail, Outlook Web, Yahoo, etc.) sin abrir aplicaciones externas no deseadas.
+            </p>
+
+            {/* Destinatario */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-[11px] font-bold text-stone-600">Destinatario (Email):</label>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(emailDestino);
+                      setCopiadoEmailCampo('email');
+                      setTimeout(() => setCopiadoEmailCampo('ninguno'), 2000);
+                    } catch {}
+                  }}
+                  className="flex items-center gap-1 text-[11px] font-bold text-rose-600 hover:text-rose-700 cursor-pointer"
+                >
+                  {copiadoEmailCampo === 'email' ? <CheckCircle2 size={12} className="text-emerald-600" /> : <Copy size={12} />}
+                  <span>{copiadoEmailCampo === 'email' ? '¡Email Copiado!' : 'Copiar Email'}</span>
+                </button>
+              </div>
+              <input
+                type="text"
+                readOnly
+                value={emailDestino}
+                className="w-full rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 font-mono text-xs text-stone-800 select-all"
+              />
+            </div>
+
+            {/* Asunto */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-[11px] font-bold text-stone-600">Asunto del Correo:</label>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(asuntoEmail);
+                      setCopiadoEmailCampo('asunto');
+                      setTimeout(() => setCopiadoEmailCampo('ninguno'), 2000);
+                    } catch {}
+                  }}
+                  className="flex items-center gap-1 text-[11px] font-bold text-rose-600 hover:text-rose-700 cursor-pointer"
+                >
+                  {copiadoEmailCampo === 'asunto' ? <CheckCircle2 size={12} className="text-emerald-600" /> : <Copy size={12} />}
+                  <span>{copiadoEmailCampo === 'asunto' ? '¡Asunto Copiado!' : 'Copiar Asunto'}</span>
+                </button>
+              </div>
+              <input
+                type="text"
+                readOnly
+                value={asuntoEmail}
+                className="w-full rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 font-semibold text-xs text-stone-800 select-all"
+              />
+            </div>
+
+            {/* Cuerpo del Mensaje */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-[11px] font-bold text-stone-600">Cuerpo del Mensaje:</label>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(cuerpoEmail);
+                      setCopiadoEmailCampo('cuerpo');
+                      setTimeout(() => setCopiadoEmailCampo('ninguno'), 2000);
+                    } catch {}
+                  }}
+                  className="flex items-center gap-1 text-[11px] font-bold text-rose-600 hover:text-rose-700 cursor-pointer"
+                >
+                  {copiadoEmailCampo === 'cuerpo' ? <CheckCircle2 size={12} className="text-emerald-600" /> : <Copy size={12} />}
+                  <span>{copiadoEmailCampo === 'cuerpo' ? '¡Mensaje Copiado!' : 'Copiar Mensaje Completo'}</span>
+                </button>
+              </div>
+              <textarea
+                rows={9}
+                readOnly
+                value={cuerpoEmail}
+                className="w-full rounded-2xl border border-stone-200 bg-stone-50 p-3 text-xs leading-relaxed text-stone-800 select-all font-sans"
+              />
+            </div>
+
+            {/* Acciones Rápidas */}
+            <div className="pt-2 border-t space-y-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const textoTotal = `Para: ${emailDestino}\nAsunto: ${asuntoEmail}\n\n${cuerpoEmail}`;
+                    try {
+                      await navigator.clipboard.writeText(textoTotal);
+                      setCopiadoEmailCampo('todo');
+                      setTimeout(() => setCopiadoEmailCampo('ninguno'), 2000);
+                    } catch {}
+                  }}
+                  className="flex items-center justify-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50/70 py-2.5 font-bold text-rose-700 hover:bg-rose-100 cursor-pointer"
+                >
+                  {copiadoEmailCampo === 'todo' ? <CheckCircle2 size={14} className="text-emerald-600" /> : <Copy size={14} />}
+                  <span>{copiadoEmailCampo === 'todo' ? '¡Todo Copiado!' : '📋 Copiar Todo'}</span>
+                </button>
+
+                <a
+                  href={`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(emailDestino)}&su=${encodeURIComponent(asuntoEmail)}&body=${encodeURIComponent(cuerpoEmail)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-1.5 rounded-xl bg-red-600 py-2.5 font-bold text-white hover:bg-red-700 shadow-xs cursor-pointer"
+                >
+                  <Mail size={14} />
+                  <span>Redactar en Gmail Web</span>
+                </a>
+              </div>
+
+              <div className="flex justify-end pt-1">
+                <button
+                  type="button"
+                  onClick={() => setModalEmailBox(false)}
+                  className="rounded-xl border border-stone-300 px-4 py-2 font-bold text-stone-700 hover:bg-stone-50 cursor-pointer"
+                >
+                  Cerrar
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

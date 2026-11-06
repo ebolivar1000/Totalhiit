@@ -3,6 +3,7 @@ import {
   AlertTriangle,
   ArrowUpDown,
   BarChart3,
+  Calendar,
   CheckCircle2,
   CheckSquare,
   Copy,
@@ -12,6 +13,7 @@ import {
   EyeOff,
   Filter,
   Globe,
+  History,
   LogOut,
   Mail,
   MessageCircle,
@@ -23,6 +25,27 @@ import {
   Trash2,
   TrendingUp,
 } from 'lucide-react';
+import {
+  consultarDolarApi,
+  cargarHistorialCotizaciones,
+  obtenerCotizacionParaFecha,
+  SnapshotCotizacion,
+} from './cotizaciones';
+
+const NOMBRES_MESES = [
+  'Enero',
+  'Febrero',
+  'Marzo',
+  'Abril',
+  'Mayo',
+  'Junio',
+  'Julio',
+  'Agosto',
+  'Septiembre',
+  'Octubre',
+  'Noviembre',
+  'Diciembre',
+];
 
 // ==============================================================================
 // TIPOS Y MODELO DE DATOS
@@ -67,6 +90,8 @@ export interface Ingreso {
   ars_equivalente: number;
   mes_periodo: number;
   anio_periodo: number;
+  mes_pagado_label?: string; // ej: "Junio 2026", "Julio 2026"
+  meses_adelantados?: number;
   metodo_pago: string;
   estado: 'APROBADO' | 'PENDIENTE';
   notas?: string;
@@ -382,6 +407,24 @@ export default function CRMApp() {
   const [formPaisTasaUsd, setFormPaisTasaUsd] = useState<number>(1.0);
   const [formPaisTasaArs, setFormPaisTasaArs] = useState<number>(1449.58);
 
+  // Cotizaciones en Vivo & Historial DolarApi
+  const [cotizacionLive, setCotizacionLive] = useState<SnapshotCotizacion | null>(() => {
+    const hist = cargarHistorialCotizaciones();
+    return hist.length > 0 ? hist[0] : null;
+  });
+  const [historialCot, setHistorialCot] = useState<SnapshotCotizacion[]>(() => cargarHistorialCotizaciones());
+  const [modalHistorialCot, setModalHistorialCot] = useState(false);
+  const [actualizandoCot, setActualizandoCot] = useState(false);
+
+  useEffect(() => {
+    consultarDolarApi().then((data) => {
+      if (data) {
+        setCotizacionLive(data);
+        setHistorialCot(cargarHistorialCotizaciones());
+      }
+    });
+  }, []);
+
   // Modal Ingreso
   const [modalIngreso, setModalIngreso] = useState(false);
   const [ingTipo, setIngTipo] = useState<Ingreso['tipo_ingreso']>('CUOTA_ALUMNA');
@@ -389,6 +432,9 @@ export default function CRMApp() {
   const [ingClienteMarca, setIngClienteMarca] = useState('');
   const [ingConcepto, setIngConcepto] = useState('Cuota Mensual TotalHIIT');
   const [ingFecha, setIngFecha] = useState('2026-06-01');
+  const [ingMesPeriodo, setIngMesPeriodo] = useState<number>(6);
+  const [ingAnioPeriodo, setIngAnioPeriodo] = useState<number>(2026);
+  const [ingMesesAdelantados, setIngMesesAdelantados] = useState<number>(1);
   const [ingMoneda, setIngMoneda] = useState('USD');
   const [ingMonto, setIngMonto] = useState<number>(40);
   const [ingTasaUsd, setIngTasaUsd] = useState<number>(1.0);
@@ -507,8 +553,24 @@ export default function CRMApp() {
       const diff = diaCobro - diaActual;
       let estado: 'VENCE_HOY' | 'PROXIMO' | 'VENCIDO' | 'AL_DIA' = 'AL_DIA';
 
+      // Buscar si tiene pagos registrados (incluyendo meses adelantados)
+      const pagosAlumna = ingresos.filter((i) => i.alumna_codigo === al.codigo && i.tipo_ingreso === 'CUOTA_ALUMNA');
+      let ultimoMesIndex = 0;
+      let ultimoMesTexto = '';
+      pagosAlumna.forEach((p) => {
+        const idx = (p.anio_periodo || 2026) * 12 + (p.mes_periodo || 6);
+        if (idx > ultimoMesIndex) {
+          ultimoMesIndex = idx;
+          ultimoMesTexto = p.mes_pagado_label || `${NOMBRES_MESES[(p.mes_periodo || 6) - 1]} ${p.anio_periodo || 2026}`;
+        }
+      });
+
+      const mesActualIndex = hoy.getFullYear() * 12 + (hoy.getMonth() + 1);
+
       if (al.activa === 0) {
         estado = 'AL_DIA';
+      } else if (ultimoMesIndex > mesActualIndex) {
+        estado = 'AL_DIA'; // Al día por pago de meses adelantados
       } else if (diff === 0) {
         estado = 'VENCE_HOY';
       } else if (diff > 0 && diff <= 7) {
@@ -527,6 +589,7 @@ export default function CRMApp() {
         estado,
         montoEst,
         moneda: al.moneda_preferida,
+        ultimoMesTexto,
       };
     });
 
@@ -785,7 +848,7 @@ export default function CRMApp() {
       return;
     }
     if (inputClave.trim() !== claveGuardada) {
-      setErrorLogin('Contraseña incorrecta. Recuerda que la clave por defecto es "admin2026".');
+      setErrorLogin('Contraseña incorrecta. Por favor verifica tus credenciales.');
       return;
     }
 
@@ -855,7 +918,7 @@ export default function CRMApp() {
                   <div className="relative">
                     <input
                       type={verClave ? 'text' : 'password'}
-                      placeholder="admin2026"
+                      placeholder="••••••••"
                       value={inputClave}
                       onChange={(e) => setInputClave(e.target.value)}
                       required
@@ -905,7 +968,7 @@ export default function CRMApp() {
               <form onSubmit={handleRecuperar} className="space-y-4">
                 <h3 className="text-xs font-bold uppercase text-white">Restablecer Contraseña</h3>
                 <p className="text-[11px] text-stone-400">
-                  Ingresa tu correo autorizado para reiniciar la clave a <code className="text-rose-400">admin2026</code>:
+                  Ingresa tu correo autorizado para reiniciar la contraseña de acceso:
                 </p>
 
                 <input
@@ -970,6 +1033,43 @@ export default function CRMApp() {
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Ticker Cotizaciones En Vivo DolarApi */}
+            <div className="hidden md:flex items-center gap-2 rounded-xl border border-stone-200 bg-stone-50 px-2.5 py-1 text-[11px]">
+              <span className="font-bold text-stone-700 flex items-center gap-0.5">
+                <DollarSign size={12} className="text-emerald-600" /> Blue:
+              </span>
+              <span className="font-black text-emerald-700">${cotizacionLive?.usd_blue_venta || 1555} ARS</span>
+              <span className="text-stone-300">|</span>
+              <span className="font-bold text-stone-700">Oficial:</span>
+              <span className="font-bold text-stone-800">${cotizacionLive?.usd_oficial_venta || 1570} ARS</span>
+              <span className="text-stone-300">|</span>
+              <span className="font-bold text-stone-700">Euro:</span>
+              <span className="font-bold text-blue-700">${cotizacionLive?.eur_venta || 1738} ARS</span>
+              <button
+                onClick={async () => {
+                  setActualizandoCot(true);
+                  const res = await consultarDolarApi();
+                  if (res) {
+                    setCotizacionLive(res);
+                    setHistorialCot(cargarHistorialCotizaciones());
+                  }
+                  setActualizandoCot(false);
+                }}
+                disabled={actualizandoCot}
+                className="ml-0.5 rounded-lg bg-stone-200 p-1 text-stone-600 hover:bg-stone-300 hover:text-stone-900 transition cursor-pointer"
+                title="Actualizar cotización en vivo desde DolarApi.com"
+              >
+                <RotateCcw size={11} className={actualizandoCot ? 'animate-spin' : ''} />
+              </button>
+              <button
+                onClick={() => setModalHistorialCot(true)}
+                className="rounded-lg bg-white border border-stone-200 px-1.5 py-0.5 text-[10px] font-bold text-rose-600 hover:bg-rose-50 cursor-pointer"
+                title="Ver historial de cotizaciones por fecha"
+              >
+                Historial
+              </button>
+            </div>
+
             <span className="hidden sm:inline-block rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-stone-600">
               {adminEmail}
             </span>
@@ -1854,6 +1954,7 @@ export default function CRMApp() {
                   <thead className="border-b border-stone-200 bg-stone-50 font-bold text-stone-600">
                     <tr>
                       <th className="py-3 px-3.5">Fecha</th>
+                      <th className="py-3 px-3.5">Mes Pagado</th>
                       <th className="py-3 px-3.5">Tipo</th>
                       <th className="py-3 px-3.5">Alumna / Marca</th>
                       <th className="py-3 px-3.5">Concepto</th>
@@ -1867,10 +1968,17 @@ export default function CRMApp() {
                     {ingresosFiltrados.map((ing) => {
                       const al = ing.alumna_codigo ? alumnas.find((a) => a.codigo === ing.alumna_codigo) : null;
                       const pais = al ? mapaPaises.get(al.pais_id) : null;
+                      const mesLabel = ing.mes_pagado_label || (ing.mes_periodo ? `${NOMBRES_MESES[ing.mes_periodo - 1]} ${ing.anio_periodo}` : '—');
 
                       return (
                         <tr key={ing.id} className="hover:bg-stone-50/80 transition">
                           <td className="py-3 px-3.5 text-stone-500 whitespace-nowrap">{ing.fecha_pago}</td>
+                          <td className="py-3 px-3.5 whitespace-nowrap">
+                            <span className="inline-flex items-center gap-1 rounded-lg bg-rose-50 border border-rose-200 px-2 py-0.5 font-bold text-rose-700 text-[11px]">
+                              <Calendar size={11} className="text-rose-500" />
+                              <span>{mesLabel}</span>
+                            </span>
+                          </td>
                           <td className="py-3 px-3.5 whitespace-nowrap">
                             <span className="rounded-md bg-stone-100 px-2 py-0.5 text-[10px] font-bold text-stone-700">
                               {ing.tipo_ingreso === 'CUOTA_ALUMNA' ? 'Alumna' : ing.tipo_ingreso === 'CONTRATACION_APP' ? 'App' : ing.tipo_ingreso === 'COLABORACION_MARCA' ? 'Marca' : 'Otro'}
@@ -2986,26 +3094,47 @@ export default function CRMApp() {
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                const monto = Number(ingMonto) || 0;
-                const nuevo: Ingreso = {
-                  id: `ing-${Date.now()}`,
-                  tipo_ingreso: ingTipo,
-                  alumna_codigo: ingTipo === 'CUOTA_ALUMNA' ? ingAlumnaCod : undefined,
-                  cliente_o_marca: ingTipo !== 'CUOTA_ALUMNA' ? ingClienteMarca : undefined,
-                  concepto: ingConcepto,
-                  fecha_pago: ingFecha,
-                  moneda_original: ingMoneda,
-                  monto_original: monto,
-                  tasa_a_usd: ingTasaUsd,
-                  tasa_a_ars: ingTasaArs,
-                  usd_equivalente: Math.round(monto * ingTasaUsd * 100) / 100,
-                  ars_equivalente: Math.round(monto * ingTasaArs * 100) / 100,
-                  mes_periodo: Number(ingFecha.split('-')[1]) || 6,
-                  anio_periodo: Number(ingFecha.split('-')[0]) || 2026,
-                  metodo_pago: ingMetodo,
-                  estado: 'APROBADO',
-                };
-                setIngresos((prev) => [nuevo, ...prev]);
+                const montoMes = Number(ingMonto) || 0;
+                const cantMeses = ingTipo === 'CUOTA_ALUMNA' ? Math.max(Number(ingMesesAdelantados) || 1, 1) : 1;
+                const nuevos: Ingreso[] = [];
+
+                for (let k = 0; k < cantMeses; k++) {
+                  let m = ingMesPeriodo + k;
+                  let a = ingAnioPeriodo;
+                  while (m > 12) {
+                    m -= 12;
+                    a += 1;
+                  }
+                  const labelMes = `${NOMBRES_MESES[m - 1]} ${a}`;
+                  const conc = cantMeses > 1
+                    ? `${ingConcepto} (Mes ${k + 1}/${cantMeses} - ${labelMes})`
+                    : ingTipo === 'CUOTA_ALUMNA'
+                    ? `${ingConcepto} (${labelMes})`
+                    : ingConcepto;
+
+                  nuevos.push({
+                    id: `ing-${Date.now()}-${k}`,
+                    tipo_ingreso: ingTipo,
+                    alumna_codigo: ingTipo === 'CUOTA_ALUMNA' ? ingAlumnaCod : undefined,
+                    cliente_o_marca: ingTipo !== 'CUOTA_ALUMNA' ? ingClienteMarca : undefined,
+                    concepto: conc,
+                    fecha_pago: ingFecha,
+                    moneda_original: ingMoneda,
+                    monto_original: montoMes,
+                    tasa_a_usd: ingTasaUsd,
+                    tasa_a_ars: ingTasaArs,
+                    usd_equivalente: Math.round(montoMes * ingTasaUsd * 100) / 100,
+                    ars_equivalente: Math.round(montoMes * ingTasaArs * 100) / 100,
+                    mes_periodo: m,
+                    anio_periodo: a,
+                    mes_pagado_label: labelMes,
+                    meses_adelantados: cantMeses,
+                    metodo_pago: ingMetodo,
+                    estado: 'APROBADO',
+                  });
+                }
+
+                setIngresos((prev) => [...nuevos, ...prev]);
                 setModalIngreso(false);
               }}
               className="space-y-3"
@@ -3025,32 +3154,90 @@ export default function CRMApp() {
               </div>
 
               {ingTipo === 'CUOTA_ALUMNA' ? (
-                <div>
-                  <label className="block text-[11px] font-semibold text-stone-600 mb-0.5">Alumna</label>
-                  <select
-                    value={ingAlumnaCod}
-                    onChange={(e) => {
-                      const cod = e.target.value;
-                      setIngAlumnaCod(cod);
-                      const al = alumnas.find((a) => a.codigo === cod);
-                      if (al) {
-                        setIngMoneda(al.moneda_preferida);
-                        setIngMonto(al.cuota_mensual || (al.moneda_preferida === 'ARS' ? 40000 : 40));
-                        const p = mapaPaises.get(al.pais_id);
-                        if (p) {
-                          setIngTasaUsd(p.tasa_a_usd);
-                          setIngTasaArs(p.tasa_a_ars);
+                <div className="space-y-2">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-stone-600 mb-0.5">Alumna</label>
+                    <select
+                      value={ingAlumnaCod}
+                      onChange={(e) => {
+                        const cod = e.target.value;
+                        setIngAlumnaCod(cod);
+                        const al = alumnas.find((a) => a.codigo === cod);
+                        if (al) {
+                          setIngMoneda(al.moneda_preferida);
+                          setIngMonto(al.cuota_mensual || (al.moneda_preferida === 'ARS' ? 40000 : 40));
+                          const p = mapaPaises.get(al.pais_id);
+                          if (p) {
+                            setIngTasaUsd(p.tasa_a_usd);
+                            setIngTasaArs(p.tasa_a_ars);
+                          }
                         }
-                      }
-                    }}
-                    required
-                    className="w-full rounded-xl border border-stone-300 p-2 text-xs"
-                  >
-                    <option value="">Selecciona alumna...</option>
-                    {alumnas.map((a) => (
-                      <option key={a.codigo} value={a.codigo}>{a.codigo} — {a.nombre_completo}</option>
-                    ))}
-                  </select>
+                      }}
+                      required
+                      className="w-full rounded-xl border border-stone-300 p-2 text-xs"
+                    >
+                      <option value="">Selecciona alumna...</option>
+                      {alumnas.map((a) => (
+                        <option key={a.codigo} value={a.codigo}>{a.codigo} — {a.nombre_completo}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Sección Mes Pagado y Meses Adelantados (Requerimiento 3) */}
+                  <div className="rounded-2xl border border-rose-200 bg-rose-50/50 p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-rose-800 flex items-center gap-1">
+                        <Calendar size={13} /> Mes Abonado & Pagos Adelantados
+                      </span>
+                      <span className="text-[10px] text-rose-600 font-semibold">1 alumna, N meses</span>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2">
+                      <div>
+                        <label className="block text-[10px] font-semibold text-stone-600 mb-0.5">Mes</label>
+                        <select
+                          value={ingMesPeriodo}
+                          onChange={(e) => setIngMesPeriodo(Number(e.target.value))}
+                          className="w-full rounded-xl border border-stone-300 bg-white p-2 text-xs font-semibold"
+                        >
+                          {NOMBRES_MESES.map((nom, idx) => (
+                            <option key={idx + 1} value={idx + 1}>{nom}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] font-semibold text-stone-600 mb-0.5">Año</label>
+                        <input
+                          type="number"
+                          value={ingAnioPeriodo}
+                          onChange={(e) => setIngAnioPeriodo(Number(e.target.value))}
+                          className="w-full rounded-xl border border-stone-300 bg-white p-2 text-xs font-semibold"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] font-semibold text-stone-600 mb-0.5">¿Meses a pagar?</label>
+                        <select
+                          value={ingMesesAdelantados}
+                          onChange={(e) => setIngMesesAdelantados(Number(e.target.value))}
+                          className="w-full rounded-xl border border-rose-300 bg-white p-2 text-xs font-bold text-rose-700"
+                        >
+                          <option value={1}>1 mes (Normal)</option>
+                          <option value={2}>2 meses</option>
+                          <option value={3}>3 meses (Trimestre)</option>
+                          <option value={6}>6 meses (Semestre)</option>
+                          <option value={12}>12 meses (Año)</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {ingMesesAdelantados > 1 && (
+                      <div className="rounded-xl bg-white border border-rose-200 p-2 text-[11px] text-rose-800">
+                        💡 Se generarán <strong>{ingMesesAdelantados} registros individuales</strong> consecutivos (cuota mensual: ${ingMonto} {ingMoneda}). Total cobrado hoy: <strong>${ingMonto * ingMesesAdelantados} {ingMoneda}</strong>.
+                      </div>
+                    )}
+                  </div>
                 </div>
               ) : (
                 <div>
@@ -3078,14 +3265,31 @@ export default function CRMApp() {
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-[11px] font-semibold text-stone-600 mb-0.5">Fecha</label>
+                  <label className="block text-[11px] font-semibold text-stone-600 mb-0.5">Fecha de Cobro</label>
                   <input
                     type="date"
                     value={ingFecha}
-                    onChange={(e) => setIngFecha(e.target.value)}
+                    onChange={(e) => {
+                      const f = e.target.value;
+                      setIngFecha(f);
+                      const cot = obtenerCotizacionParaFecha(f);
+                      if (ingMoneda === 'USD') {
+                        setIngTasaUsd(1);
+                        setIngTasaArs(cot.usd_a_ars);
+                      } else if (ingMoneda === 'EUR') {
+                        setIngTasaUsd(Math.round((cot.eur_a_ars / cot.usd_a_ars) * 10000) / 10000);
+                        setIngTasaArs(cot.eur_a_ars);
+                      } else if (ingMoneda === 'ARS') {
+                        setIngTasaUsd(Math.round((1 / cot.usd_a_ars) * 1000000) / 1000000);
+                        setIngTasaArs(1);
+                      }
+                    }}
                     required
                     className="w-full rounded-xl border border-stone-300 p-2 text-xs"
                   />
+                  <span className="block mt-0.5 text-[9px] text-stone-500">
+                    Foto cambiaria: 1 USD = ${ingTasaArs} ARS ({obtenerCotizacionParaFecha(ingFecha).fuente})
+                  </span>
                 </div>
                 <div>
                   <label className="block text-[11px] font-semibold text-stone-600 mb-0.5">Método</label>
@@ -3289,6 +3493,80 @@ export default function CRMApp() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================== */}
+      {/* MODAL HISTORIAL DE COTIZACIONES (REQUERIMIENTO 2)               */}
+      {/* ============================================================== */}
+      {modalHistorialCot && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto text-xs">
+            <div className="flex items-center justify-between border-b pb-2">
+              <div className="flex items-center gap-2">
+                <History size={16} className="text-rose-600" />
+                <h3 className="text-sm font-bold text-stone-900">Historial de Cotizaciones de Divisas</h3>
+              </div>
+              <button onClick={() => setModalHistorialCot(false)} className="text-stone-400 hover:text-stone-600 text-sm">✕</button>
+            </div>
+
+            <p className="text-xs text-stone-500">
+              Registro diario del Dólar Blue, Oficial y Euro vs Peso Argentino. Cada ingreso o egreso conserva la cotización exacta del día en que se realizó la operación (la foto guardada).
+            </p>
+
+            <div className="overflow-hidden rounded-2xl border border-stone-200">
+              <table className="w-full text-left text-xs">
+                <thead className="border-b border-stone-200 bg-stone-50 font-bold text-stone-600">
+                  <tr>
+                    <th className="py-2.5 px-3">Fecha</th>
+                    <th className="py-2.5 px-3">USD Blue (Venta)</th>
+                    <th className="py-2.5 px-3">USD Oficial</th>
+                    <th className="py-2.5 px-3">Euro Oficial</th>
+                    <th className="py-2.5 px-3">Fuente</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-stone-100">
+                  {historialCot.map((h) => (
+                    <tr key={h.fecha} className="hover:bg-stone-50/80">
+                      <td className="py-2.5 px-3 font-semibold text-stone-800">{h.fecha}</td>
+                      <td className="py-2.5 px-3 font-mono font-bold text-emerald-700">${h.usd_blue_venta}</td>
+                      <td className="py-2.5 px-3 font-mono text-stone-700">${h.usd_oficial_venta}</td>
+                      <td className="py-2.5 px-3 font-mono text-blue-700">${h.eur_venta}</td>
+                      <td className="py-2.5 px-3 text-stone-500 text-[11px]">{h.fuente}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="flex items-center justify-between pt-2 border-t">
+              <button
+                type="button"
+                onClick={async () => {
+                  setActualizandoCot(true);
+                  const res = await consultarDolarApi();
+                  if (res) {
+                    setCotizacionLive(res);
+                    setHistorialCot(cargarHistorialCotizaciones());
+                  }
+                  setActualizandoCot(false);
+                }}
+                disabled={actualizandoCot}
+                className="flex items-center gap-1.5 rounded-xl border border-stone-300 px-3 py-1.5 font-bold text-stone-700 hover:bg-stone-50 cursor-pointer"
+              >
+                <RotateCcw size={12} className={actualizandoCot ? 'animate-spin' : ''} />
+                <span>Actualizar hoy desde DolarApi</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setModalHistorialCot(false)}
+                className="rounded-xl bg-rose-600 px-4 py-2 font-bold text-white hover:bg-rose-700 cursor-pointer"
+              >
+                Cerrar
+              </button>
+            </div>
           </div>
         </div>
       )}

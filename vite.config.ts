@@ -11,7 +11,9 @@ export default defineConfig({
       input: {
         main: 'index.html',
         admin: 'admin.html',
-        crm: 'crm.html'
+        crm: 'crm.html',
+        registro: 'registro.html',
+        crm_registro: 'crm/registro/index.html'
       }
     }
   },

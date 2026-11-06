@@ -6,9 +6,11 @@ import {
   Calendar,
   CheckCircle2,
   CheckSquare,
+  ClipboardList,
   Copy,
   DollarSign,
   Edit2,
+  ExternalLink,
   Eye,
   EyeOff,
   FileSpreadsheet,
@@ -27,6 +29,7 @@ import {
   Square,
   Trash2,
   TrendingUp,
+  UserCheck,
 } from 'lucide-react';
 import {
   consultarDolarApi,
@@ -35,6 +38,8 @@ import {
   SnapshotCotizacion,
 } from './cotizaciones';
 import { exportarAExcel, exportarAPDF } from './exportador';
+import { FichaRegistro, FICHAS_INICIALES } from './tiposFicha';
+import FormularioRegistro from './registro/FormularioRegistro';
 
 const NOMBRES_MESES = [
   'Enero',
@@ -239,6 +244,21 @@ const LLAVE_STORAGE_PLANTILLA = 'totalhiit_crm_plantilla_msg';
 const LLAVE_SESION_ACTIVA = 'totalhiit_crm_autenticado';
 
 export default function CRMApp() {
+  // Detección de ruta pública de registro (/crm/registro, /registro, ?modulo=registro)
+  const [esRutaRegistro, setEsRutaRegistro] = useState(() => {
+    return (
+      window.location.pathname.includes('/registro') ||
+      window.location.search.includes('modulo=registro') ||
+      window.location.search.includes('registro=1') ||
+      window.location.hash.includes('registro')
+    );
+  });
+
+  // Si está en la ruta pública de registro, renderizar directamente el Formulario sin pedir login
+  if (esRutaRegistro) {
+    return <FormularioRegistro onVolverAdmin={() => setEsRutaRegistro(false)} />;
+  }
+
   // Autenticación
   const [autenticado, setAutenticado] = useState<boolean>(() => {
     return sessionStorage.getItem(LLAVE_SESION_ACTIVA) === '1';
@@ -256,7 +276,7 @@ export default function CRMApp() {
 
   // Navegación
   const [tab, setTab] = useState<
-    'alumnas' | 'vencimientos' | 'recordatorios' | 'ingresos' | 'egresos' | 'dashboard' | 'paises' | 'auditoria' | 'seguridad'
+    'alumnas' | 'vencimientos' | 'recordatorios' | 'fichas' | 'ingresos' | 'egresos' | 'dashboard' | 'paises' | 'auditoria' | 'seguridad'
   >('alumnas');
 
   // Países y Monedas
@@ -329,6 +349,44 @@ export default function CRMApp() {
       },
     ];
   });
+
+  // Fichas de Registro e Historial Integral (Google Form Integrado)
+  const [fichas, setFichas] = useState<FichaRegistro[]>(() => {
+    const raw = localStorage.getItem('totalhiit_crm_fichas_registro');
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch {}
+    }
+    return FICHAS_INICIALES;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('totalhiit_crm_fichas_registro', JSON.stringify(fichas));
+  }, [fichas]);
+
+  // Sincronización en vivo si una alumna envía su formulario desde otra pestaña o ventana
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'totalhiit_crm_fichas_registro' && e.newValue) {
+        try {
+          const actualizadas = JSON.parse(e.newValue);
+          if (Array.isArray(actualizadas)) {
+            setFichas(actualizadas);
+          }
+        } catch {}
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
+  // Modal Ver Ficha Detallada & Filtros
+  const [fichaModal, setFichaModal] = useState<FichaRegistro | null>(null);
+  const [busquedaFichas, setBusquedaFichas] = useState('');
+  const [filtroObjetivoFichas, setFiltroObjetivoFichas] = useState<string>('todos');
+  const [copiadoLinkRegistro, setCopiadoLinkRegistro] = useState(false);
 
   // Plantilla de Recordatorios
   const [plantillaMsg, setPlantillaMsg] = useState<string>(() => {
@@ -1261,6 +1319,169 @@ export default function CRMApp() {
     );
   };
 
+  // Memos y Exportaciones de Fichas de Alumnas (Google Form Integrado)
+  const fichasFiltradas = useMemo(() => {
+    return fichas.filter((f) => {
+      const q = busquedaFichas.toLowerCase();
+      const matchBusqueda =
+        f.nombre_completo.toLowerCase().includes(q) ||
+        (f.apodo || '').toLowerCase().includes(q) ||
+        f.email.toLowerCase().includes(q) ||
+        f.telefono_whatsapp.includes(q) ||
+        f.localidad_pais.toLowerCase().includes(q);
+
+      const matchObj = filtroObjetivoFichas === 'todos' || f.objetivo_principal === filtroObjetivoFichas;
+
+      return matchBusqueda && matchObj;
+    });
+  }, [fichas, busquedaFichas, filtroObjetivoFichas]);
+
+  const exportarTodasFichasExcel = () => {
+    const columnas = [
+      'ID',
+      'Fecha Registro',
+      'Alumna',
+      'Apodo',
+      'Email',
+      'WhatsApp',
+      'Sexo',
+      'Edad',
+      'Localidad / País',
+      'Estatura',
+      'Peso',
+      'Talla Remera',
+      'Alergias',
+      'Lesiones / Patologías',
+      'Medicamentos',
+      'COVID / Secuelas',
+      'Alcohol',
+      'Tabaco',
+      'Horas Sueño',
+      'Objetivo Principal',
+      'Motivo TotalHIIT',
+      'Actividad Actual',
+      'Deportes Favoritos',
+      'Estado Emocional',
+      'Contacto Emergencia',
+    ];
+    const filas = fichasFiltradas.map((f) => [
+      f.id,
+      f.fecha_registro,
+      f.nombre_completo,
+      f.apodo || '—',
+      f.email,
+      f.telefono_whatsapp,
+      f.sexo,
+      f.edad,
+      f.localidad_pais,
+      f.altura,
+      f.peso,
+      f.talla_remera,
+      f.alergias,
+      f.detalle_lesiones || f.problemas_musculares_oseos,
+      f.detalle_medicamentos || f.toma_medicamentos,
+      f.secuelas_covid || f.tuvo_covid,
+      f.consume_alcohol,
+      f.fuma,
+      f.horas_sueno,
+      f.objetivo_principal,
+      f.motivo_totalhiit || '—',
+      f.detalle_actividad_actual || f.actividad_fisica_actual,
+      f.deportes_favoritos || '—',
+      f.estado_emocional || '—',
+      f.contacto_emergencia,
+    ]);
+    exportarAExcel('TotalHIIT_Fichas_Alumnas', 'Padrón de Fichas Integrales de Salud & Entrenamiento', columnas, filas);
+  };
+
+  const exportarTodasFichasPDF = () => {
+    const columnas = ['Fecha', 'Alumna', 'Contacto', 'Ubicación', 'Contextura', 'Alergias / Lesiones', 'Objetivo'];
+    const filas = fichasFiltradas.map((f) => [
+      f.fecha_registro.split(' ')[0],
+      f.nombre_completo,
+      `${f.email} | ${f.telefono_whatsapp}`,
+      f.localidad_pais,
+      `${f.altura} / ${f.peso} (Talla ${f.talla_remera})`,
+      f.detalle_lesiones ? `${f.alergias} | ${f.detalle_lesiones}` : f.alergias,
+      f.objetivo_principal.includes('Corporal') ? 'Composición Corporal' : 'Salud Integral',
+    ]);
+    exportarAPDF(
+      'Fichas Integrales de Salud & Entrenamiento TotalHIIT',
+      `Reporte con ${fichasFiltradas.length} fichas recibidas`,
+      columnas,
+      filas,
+      [
+        { etiqueta: 'Total Fichas', valor: String(fichasFiltradas.length) },
+        { etiqueta: 'Objetivo Corporal', valor: String(fichasFiltradas.filter((x) => x.objetivo_principal.includes('Corporal')).length) },
+        { etiqueta: 'Salud Integral', valor: String(fichasFiltradas.filter((x) => x.objetivo_principal.includes('Salud')).length) },
+      ]
+    );
+  };
+
+  const exportarFichaIndividualPDF = (ficha: FichaRegistro) => {
+    const columnas = ['Área / Pregunta', 'Respuesta Certificada'];
+    const filas: (string | number)[][] = [
+      ['Alumna / Atleta', ficha.nombre_completo],
+      ['Apodo Preferido', ficha.apodo || '—'],
+      ['Email', ficha.email],
+      ['WhatsApp', ficha.telefono_whatsapp],
+      ['Edad y Fecha Nac.', `${ficha.edad} años (${ficha.fecha_nacimiento})`],
+      ['Ubicación', ficha.localidad_pais],
+      ['Contacto de Emergencia', ficha.contacto_emergencia],
+      ['Medidas Corporales', `Altura: ${ficha.altura} | Peso: ${ficha.peso} | Talla: ${ficha.talla_remera}`],
+      ['Alergias', ficha.alergias],
+      ['Lesiones / Articulaciones', ficha.detalle_lesiones || (ficha.problemas_musculares_oseos === 'Sí' ? 'Sí' : 'Ninguna')],
+      ['Medicamentos', ficha.detalle_medicamentos || (ficha.toma_medicamentos === 'Sí' ? 'Sí' : 'Ninguno')],
+      ['COVID y Secuelas', ficha.secuelas_covid || (ficha.tuvo_covid === 'Sí' ? 'Tuvo COVID sin secuelas' : 'No')],
+      ['Hábitos (Alcohol / Tabaco)', `Alcohol: ${ficha.consume_alcohol} | Tabaco: ${ficha.fuma}`],
+      ['Horas de Sueño', ficha.horas_sueno],
+      ['Objetivo Principal', ficha.objetivo_principal],
+      ['Motivo de Ingreso', ficha.motivo_totalhiit || '—'],
+      ['Actividad Actual', ficha.detalle_actividad_actual || ficha.actividad_fisica_actual],
+      ['Deportes Favoritos', ficha.deportes_favoritos || '—'],
+      ['Estado Emocional', ficha.estado_emocional || '—'],
+      ['Compromiso con el Entrenamiento', ficha.compromiso_ayuda],
+    ];
+
+    exportarAPDF(
+      `Ficha Integral de Salud y Entrenamiento`,
+      `Alumna: ${ficha.nombre_completo} | Registrado: ${ficha.fecha_registro}`,
+      columnas,
+      filas,
+      [
+        { etiqueta: 'Alumna', valor: ficha.nombre_completo },
+        { etiqueta: 'Edad', valor: `${ficha.edad} años` },
+        { etiqueta: 'Objetivo', valor: ficha.objetivo_principal.includes('Corporal') ? 'Composición Corporal' : 'Salud Integral' },
+      ]
+    );
+  };
+
+  const pasarFichaAAlumna = (f: FichaRegistro) => {
+    setAlumnaEdit(null);
+    setFormCod((alumnas.length + 1).toString().padStart(4, '0'));
+    setFormNombre(f.nombre_completo);
+    setFormEmail(f.email);
+    setFormTel(f.telefono_whatsapp);
+    let matchPaisId = 1;
+    const locLower = f.localidad_pais.toLowerCase();
+    for (const p of paises) {
+      if (locLower.includes(p.nombre.toLowerCase())) {
+        matchPaisId = p.id;
+        break;
+      }
+    }
+    setFormPais(matchPaisId);
+    const pObj = mapaPaises.get(matchPaisId);
+    if (pObj) {
+      setFormMoneda(pObj.moneda_defecto);
+      setFormCuota(pObj.moneda_defecto === 'ARS' ? 40000 : 40);
+    }
+    setFormDia(1);
+    setFormActiva(1);
+    setFormNotas(`Ficha #${f.id} | Meta: ${f.objetivo_principal} | Altura: ${f.altura} | Peso: ${f.peso} | Talla: ${f.talla_remera}`);
+    setModalAlumna(true);
+  };
+
   // Manejo Login
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -1552,6 +1773,7 @@ export default function CRMApp() {
             { id: 'alumnas', label: '👥 Alumnas', count: alumnas.length },
             { id: 'vencimientos', label: '⏰ Vencimientos', badge: alertasVencimiento.filter((a) => a.estado === 'VENCE_HOY' || a.estado === 'VENCIDO').length },
             { id: 'recordatorios', label: '✉️ Recordatorios' },
+            { id: 'fichas', label: '📋 Fichas Alumnas', count: fichas.length },
             { id: 'ingresos', label: '💵 Ingresos', count: ingresos.length },
             { id: 'egresos', label: '📉 Egresos', count: egresos.length },
             { id: 'dashboard', label: '📊 Métricas & P&L' },
@@ -2277,6 +2499,226 @@ export default function CRMApp() {
                         </tr>
                       );
                     })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ============================================================== */}
+        {/* PESTAÑA: FICHAS DE REGISTRO E HISTORIAL (GOOGLE FORM INTEGRADO)*/}
+        {/* ============================================================== */}
+        {tab === 'fichas' && (
+          <div className="space-y-4">
+            {/* Banner Enlace Compartible para Alumnas */}
+            <div className="rounded-3xl border border-rose-200 bg-gradient-to-r from-rose-50 via-pink-50 to-amber-50 p-5 shadow-xs space-y-3">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <ClipboardList size={18} className="text-rose-600" />
+                    <h3 className="text-sm font-bold text-stone-900">
+                      Formulario de Ingreso de Alumnas (Reemplazo Google Forms)
+                    </h3>
+                  </div>
+                  <p className="text-xs text-stone-600">
+                    Pásale este enlace a las nuevas clientas. Cada alumna llena sus datos de salud y objetivos, y al pulsar <strong>FINALIZAR REGISTRO</strong> la ficha se bloquea y queda registrada aquí.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={exportarTodasFichasExcel}
+                    className="flex items-center gap-1.5 rounded-xl border border-stone-300 bg-white px-3 py-2 text-xs font-bold text-stone-700 hover:bg-stone-50 shadow-xs transition cursor-pointer"
+                    title="Exportar Todas las Fichas a Excel"
+                  >
+                    <FileSpreadsheet size={14} className="text-emerald-600" />
+                    <span>Excel</span>
+                  </button>
+                  <button
+                    onClick={exportarTodasFichasPDF}
+                    className="flex items-center gap-1.5 rounded-xl border border-stone-300 bg-white px-3 py-2 text-xs font-bold text-stone-700 hover:bg-stone-50 shadow-xs transition cursor-pointer"
+                    title="Exportar Todas las Fichas a PDF"
+                  >
+                    <Printer size={14} className="text-rose-600" />
+                    <span>PDF</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Caja de Enlace Rápido para Enviar a Alumna */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-2 border-t border-rose-200/60">
+                <div className="flex-1 flex items-center gap-2 rounded-2xl bg-white border border-rose-300 px-3 py-2 text-xs font-mono font-bold text-rose-800 shadow-inner">
+                  <span className="text-stone-400 select-none">🔗 Link:</span>
+                  <span className="truncate">https://totalhiit.pages.dev/crm/registro</span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText('https://totalhiit.pages.dev/crm/registro');
+                        setCopiadoLinkRegistro(true);
+                        setTimeout(() => setCopiadoLinkRegistro(false), 2500);
+                      } catch {}
+                    }}
+                    className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 rounded-xl bg-rose-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-rose-700 shadow-sm transition cursor-pointer"
+                  >
+                    {copiadoLinkRegistro ? <CheckCircle2 size={14} className="text-emerald-300" /> : <Copy size={14} />}
+                    <span>{copiadoLinkRegistro ? '¡Enlace Copiado!' : 'Copiar Link para Alumna'}</span>
+                  </button>
+
+                  <a
+                    href="/crm/registro"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-1 rounded-xl border border-stone-300 bg-white px-3 py-2.5 text-xs font-bold text-stone-700 hover:bg-stone-50 transition cursor-pointer"
+                    title="Ver cómo ve el formulario la alumna"
+                  >
+                    <ExternalLink size={14} />
+                    <span className="hidden sm:inline">Probar Formulario</span>
+                  </a>
+                </div>
+              </div>
+            </div>
+
+            {/* Barra de Filtros Fichas */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 rounded-2xl border border-stone-200 bg-white p-3 shadow-xs">
+              <div className="relative">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
+                <input
+                  type="text"
+                  placeholder="Buscar por alumna, apodo, email, whatsapp, ciudad..."
+                  value={busquedaFichas}
+                  onChange={(e) => setBusquedaFichas(e.target.value)}
+                  className="w-full rounded-xl border border-stone-300 bg-white pl-8 pr-3 py-2 text-xs outline-none focus:border-rose-600"
+                />
+              </div>
+
+              <div>
+                <select
+                  value={filtroObjetivoFichas}
+                  onChange={(e) => setFiltroObjetivoFichas(e.target.value)}
+                  className="w-full rounded-xl border border-stone-300 bg-white p-2 text-xs outline-none font-semibold text-stone-700"
+                >
+                  <option value="todos">Todos los objetivos principales</option>
+                  <option value="Corporal: Bajar grasa y aumentar masa muscular">
+                    🏋️ Corporal: Bajar grasa y aumentar masa muscular
+                  </option>
+                  <option value="Mejorar tu salud de manera integral">
+                    🌿 Mejorar tu salud de manera integral
+                  </option>
+                </select>
+              </div>
+            </div>
+
+            {/* Tabla de Fichas Recibidas */}
+            <div className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-xs">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="border-b border-stone-200 bg-stone-50 font-bold text-stone-600">
+                    <tr>
+                      <th className="py-3 px-3.5">Fecha</th>
+                      <th className="py-3 px-3.5">Alumna</th>
+                      <th className="py-3 px-3.5">Contacto</th>
+                      <th className="py-3 px-3.5">Ubicación</th>
+                      <th className="py-3 px-3.5">Contextura</th>
+                      <th className="py-3 px-3.5">Alergias / Lesiones</th>
+                      <th className="py-3 px-3.5">Meta Principal</th>
+                      <th className="py-3 px-3.5 text-right">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-stone-100">
+                    {fichasFiltradas.length === 0 ? (
+                      <tr>
+                        <td colSpan={8} className="py-8 text-center text-stone-400">
+                          No se encontraron fichas de registro con los filtros seleccionados.
+                        </td>
+                      </tr>
+                    ) : (
+                      fichasFiltradas.map((f) => {
+                        const yaEnPadron = alumnas.some(
+                          (a) => a.email?.toLowerCase() === f.email.toLowerCase() || a.nombre_completo.toLowerCase() === f.nombre_completo.toLowerCase()
+                        );
+
+                        return (
+                          <tr key={f.id} className="hover:bg-stone-50/80 transition">
+                            <td className="py-3 px-3.5 font-mono text-[11px] text-stone-500 whitespace-nowrap">
+                              {f.fecha_registro.split(' ')[0]}
+                            </td>
+                            <td className="py-3 px-3.5">
+                              <div className="font-bold text-stone-900">{f.nombre_completo}</div>
+                              {f.apodo && <span className="text-[10px] text-rose-600 font-semibold">"{f.apodo}"</span>}
+                            </td>
+                            <td className="py-3 px-3.5">
+                              <div className="text-stone-700">{f.email}</div>
+                              <div className="text-[11px] text-stone-500 font-mono">{f.telefono_whatsapp}</div>
+                            </td>
+                            <td className="py-3 px-3.5 text-stone-600">{f.localidad_pais}</td>
+                            <td className="py-3 px-3.5 whitespace-nowrap">
+                              <div className="font-bold text-stone-800">{f.altura} • {f.peso}</div>
+                              <div className="text-[10px] text-stone-500">Talla: {f.talla_remera}</div>
+                            </td>
+                            <td className="py-3 px-3.5 text-stone-600 max-w-xs truncate" title={f.alergias}>
+                              {f.alergias !== 'Ninguna conocida' && f.alergias !== 'Ninguna indicada' ? (
+                                <span className="rounded bg-red-50 text-red-700 px-1.5 py-0.5 text-[10px] font-bold mr-1">
+                                  ⚠️ {f.alergias}
+                                </span>
+                              ) : (
+                                <span className="text-[11px] text-stone-400">Sin alergias</span>
+                              )}
+                              {f.detalle_lesiones && (
+                                <span className="block text-[10px] text-amber-700 truncate">
+                                  🩹 {f.detalle_lesiones}
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-3 px-3.5">
+                              <span
+                                className={`rounded-full px-2 py-0.5 text-[10px] font-bold whitespace-nowrap ${
+                                  f.objetivo_principal.includes('Corporal')
+                                    ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                                    : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                }`}
+                              >
+                                {f.objetivo_principal.includes('Corporal') ? 'Composición Corporal' : 'Salud Integral'}
+                              </span>
+                            </td>
+                            <td className="py-3 px-3.5 text-right whitespace-nowrap space-x-1">
+                              <button
+                                onClick={() => setFichaModal(f)}
+                                className="rounded-lg bg-stone-100 p-1.5 text-stone-700 hover:bg-stone-200 cursor-pointer"
+                                title="Ver Ficha Completa"
+                              >
+                                <Eye size={13} />
+                              </button>
+                              <button
+                                onClick={() => exportarFichaIndividualPDF(f)}
+                                className="rounded-lg bg-stone-100 p-1.5 text-rose-600 hover:bg-rose-50 cursor-pointer"
+                                title="Exportar Ficha a PDF"
+                              >
+                                <Printer size={13} />
+                              </button>
+                              {!yaEnPadron ? (
+                                <button
+                                  onClick={() => pasarFichaAAlumna(f)}
+                                  className="rounded-lg bg-emerald-50 px-2 py-1 text-emerald-700 font-bold hover:bg-emerald-100 cursor-pointer"
+                                  title="Incorporar al padrón de alumnas del CRM"
+                                >
+                                  <UserCheck size={12} className="inline mr-1" />
+                                  + Alumna
+                                </button>
+                              ) : (
+                                <span className="rounded-lg bg-stone-100 px-2 py-1 text-[10px] font-bold text-stone-500">
+                                  ✓ En Padrón
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -4485,6 +4927,161 @@ export default function CRMApp() {
               >
                 Cerrar
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================== */}
+      {/* MODAL DETALLE COMPLETO DE FICHA ALUMNA (GOOGLE FORM)           */}
+      {/* ============================================================== */}
+      {fichaModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-2xl rounded-3xl bg-white p-6 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto text-xs">
+            <div className="flex items-center justify-between border-b pb-3">
+              <div className="flex items-center gap-2">
+                <ClipboardList size={18} className="text-rose-600" />
+                <div>
+                  <h3 className="text-sm font-bold text-stone-900">
+                    Ficha Integral: {fichaModal.nombre_completo} {fichaModal.apodo ? `("${fichaModal.apodo}")` : ''}
+                  </h3>
+                  <span className="text-[10px] text-stone-400 font-mono">
+                    Registrado el {fichaModal.fecha_registro} • ID: {fichaModal.id}
+                  </span>
+                </div>
+              </div>
+              <button
+                onClick={() => setFichaModal(null)}
+                className="text-stone-400 hover:text-stone-600 text-sm cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Contenido en 5 Secciones Detalladas */}
+            <div className="space-y-3">
+              {/* Sección 1: Datos Personales & Contacto */}
+              <div className="rounded-2xl border border-stone-200 bg-stone-50/70 p-3.5 space-y-1.5">
+                <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider block">
+                  1. Datos Personales & Contacto
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-stone-700">
+                  <div><strong>Email:</strong> {fichaModal.email}</div>
+                  <div><strong>WhatsApp:</strong> {fichaModal.telefono_whatsapp}</div>
+                  <div><strong>Edad y Nacimiento:</strong> {fichaModal.edad} años ({fichaModal.fecha_nacimiento})</div>
+                  <div><strong>Sexo:</strong> {fichaModal.sexo}</div>
+                  <div><strong>Ubicación:</strong> {fichaModal.localidad_pais}</div>
+                  <div><strong>Instagram:</strong> {fichaModal.instagram || '—'}</div>
+                  <div className="sm:col-span-2">
+                    <strong>Contacto de Emergencia:</strong> {fichaModal.contacto_emergencia}
+                  </div>
+                  <div><strong>Consentimiento Fotos:</strong> {fichaModal.consentimiento_fotos}</div>
+                  <div><strong>Sumar a Grupo WhatsApp:</strong> {fichaModal.sumar_grupo_whatsapp}</div>
+                </div>
+              </div>
+
+              {/* Sección 2: Contextura Corporal */}
+              <div className="rounded-2xl border border-stone-200 bg-stone-50/70 p-3.5 space-y-1.5">
+                <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider block">
+                  2. Contextura Corporal & Tallas
+                </span>
+                <div className="grid grid-cols-3 gap-2 text-stone-700">
+                  <div className="bg-white p-2 rounded-xl border border-stone-200 text-center">
+                    <span className="text-[10px] text-stone-400 block font-bold">ALTURA</span>
+                    <strong className="text-sm text-stone-900">{fichaModal.altura}</strong>
+                  </div>
+                  <div className="bg-white p-2 rounded-xl border border-stone-200 text-center">
+                    <span className="text-[10px] text-stone-400 block font-bold">PESO</span>
+                    <strong className="text-sm text-stone-900">{fichaModal.peso}</strong>
+                  </div>
+                  <div className="bg-white p-2 rounded-xl border border-stone-200 text-center">
+                    <span className="text-[10px] text-stone-400 block font-bold">TALLA REMERA</span>
+                    <strong className="text-sm text-stone-900">Talla {fichaModal.talla_remera}</strong>
+                  </div>
+                </div>
+              </div>
+
+              {/* Sección 3: Datos Médicos */}
+              <div className="rounded-2xl border border-stone-200 bg-stone-50/70 p-3.5 space-y-1.5">
+                <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider block">
+                  3. Datos Médicos & Antecedentes Clínicos
+                </span>
+                <div className="space-y-1 text-stone-700">
+                  <div><strong>Alergias:</strong> <span className={fichaModal.alergias !== 'Ninguna conocida' && fichaModal.alergias !== 'Ninguna indicada' ? 'text-red-700 font-bold' : ''}>{fichaModal.alergias}</span></div>
+                  <div><strong>Embarazos:</strong> {fichaModal.embarazos} • <strong>Hijos:</strong> {fichaModal.hijos}</div>
+                  <div><strong>COVID:</strong> {fichaModal.tuvo_covid} {fichaModal.secuelas_covid ? `(Secuelas: ${fichaModal.secuelas_covid})` : ''}</div>
+                  <div><strong>Lesiones / Musculares:</strong> {fichaModal.problemas_musculares_oseos} {fichaModal.detalle_lesiones ? `— ${fichaModal.detalle_lesiones}` : ''}</div>
+                  {fichaModal.tratamiento_actual && <div><strong>Tratamiento Actual:</strong> {fichaModal.tratamiento_actual}</div>}
+                  <div><strong>Medicamentos Diarios:</strong> {fichaModal.toma_medicamentos} {fichaModal.detalle_medicamentos ? `— ${fichaModal.detalle_medicamentos}` : ''}</div>
+                  <div><strong>Discapacidad:</strong> {fichaModal.discapacidad || 'Ninguna'}</div>
+                  {fichaModal.observaciones_medicas && <div><strong>Observaciones Médicas:</strong> {fichaModal.observaciones_medicas}</div>}
+                </div>
+              </div>
+
+              {/* Sección 4: Hábitos & Sueño */}
+              <div className="rounded-2xl border border-stone-200 bg-stone-50/70 p-3.5 space-y-1.5">
+                <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider block">
+                  4. Hábitos, Suplementación & Sueño
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-stone-700">
+                  <div><strong>Alcohol:</strong> {fichaModal.consume_alcohol}</div>
+                  <div><strong>Tabaco:</strong> {fichaModal.fuma} {fichaModal.frecuencia_fuma ? `(${fichaModal.frecuencia_fuma})` : ''}</div>
+                  <div><strong>Suplementos / Hormonas:</strong> {fichaModal.suplementos_anticonceptivos || 'Ninguno'}</div>
+                  <div><strong>Horas de Sueño:</strong> {fichaModal.horas_sueno}</div>
+                </div>
+              </div>
+
+              {/* Sección 5: Objetivos & Metas */}
+              <div className="rounded-2xl border border-rose-200 bg-rose-50/50 p-3.5 space-y-1.5">
+                <span className="text-[10px] font-bold text-rose-800 uppercase tracking-wider block">
+                  5. Objetivos, Metas & Historia Deportiva
+                </span>
+                <div className="space-y-1 text-stone-800">
+                  <div><strong>Objetivo Principal:</strong> <span className="font-bold text-rose-700">{fichaModal.objetivo_principal}</span></div>
+                  {fichaModal.motivo_totalhiit && <div><strong>¿Por qué TotalHIIT?:</strong> {fichaModal.motivo_totalhiit}</div>}
+                  {fichaModal.expectativas && <div><strong>Expectativas:</strong> {fichaModal.expectativas}</div>}
+                  <div><strong>Actividad Actual:</strong> {fichaModal.detalle_actividad_actual || fichaModal.actividad_fisica_actual}</div>
+                  {fichaModal.deportes_favoritos && <div><strong>Deportes Favoritos:</strong> {fichaModal.deportes_favoritos}</div>}
+                  {fichaModal.estado_emocional && <div><strong>Estado Emocional:</strong> {fichaModal.estado_emocional}</div>}
+                  <div><strong>Compromiso y Buena Disposición:</strong> <span className="font-bold text-emerald-700">{fichaModal.compromiso_ayuda}</span></div>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer de Acciones del Modal */}
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t">
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => exportarFichaIndividualPDF(fichaModal)}
+                  className="flex items-center gap-1.5 rounded-xl border border-stone-300 bg-white px-3 py-2 text-xs font-bold text-stone-700 hover:bg-stone-50 cursor-pointer"
+                >
+                  <Printer size={13} className="text-rose-600" />
+                  <span>Exportar a PDF</span>
+                </button>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    pasarFichaAAlumna(fichaModal);
+                    setFichaModal(null);
+                  }}
+                  className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-bold text-white hover:bg-emerald-700 cursor-pointer"
+                >
+                  <UserCheck size={14} />
+                  <span>+ Incorporar al Padrón de Alumnas</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setFichaModal(null)}
+                  className="rounded-xl border border-stone-300 px-4 py-2 font-bold text-stone-700 hover:bg-stone-50 cursor-pointer"
+                >
+                  Cerrar
+                </button>
+              </div>
             </div>
           </div>
         </div>

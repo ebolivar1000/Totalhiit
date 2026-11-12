@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle,
   ArrowUpDown,
@@ -7,6 +7,8 @@ import {
   CheckCircle2,
   CheckSquare,
   ClipboardList,
+  Cloud,
+  CloudOff,
   Copy,
   DollarSign,
   Edit2,
@@ -40,6 +42,15 @@ import {
 import { exportarAExcel, exportarAPDF } from './exportador';
 import { FichaRegistro, FICHAS_INICIALES, COLUMNAS_49_GOOGLE_SHEETS, fichaAFila49 } from './tiposFicha';
 import FormularioRegistro from './registro/FormularioRegistro';
+import {
+  fetchCrmStateRemote,
+  saveCrmStateRemote,
+  verifyCrmLoginRemote,
+  changeCrmPasswordRemote,
+  mergeCrmStates,
+  hasLocalOnlyRecords,
+  CrmStatePayload,
+} from './crmSync';
 
 const NOMBRES_MESES = [
   'Enero',
@@ -268,6 +279,9 @@ export default function CRMApp() {
   const [adminEmail, setAdminEmail] = useState<string>(() => {
     return sessionStorage.getItem('totalhiit_crm_admin_email') || 'ebolivar1000@gmail.com';
   });
+  const [adminClave, setAdminClave] = useState<string>(() => {
+    return sessionStorage.getItem('totalhiit_crm_admin_clave') || localStorage.getItem(LLAVE_STORAGE_CLAVE) || CLAVE_DEFECTO;
+  });
   const [inputEmail, setInputEmail] = useState('');
   const [inputClave, setInputClave] = useState('');
   const [verClave, setVerClave] = useState(false);
@@ -275,6 +289,13 @@ export default function CRMApp() {
   const [modoRecuperar, setModoRecuperar] = useState(false);
   const [recuperarEmail, setRecuperarEmail] = useState('');
   const [msgRecuperar, setMsgRecuperar] = useState('');
+
+  // Sincronización en la nube (Cloudflare Workers KV)
+  const [remoteVersion, setRemoteVersion] = useState<number>(0);
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'synced' | 'error'>('idle');
+  const [syncErrorMsg, setSyncErrorMsg] = useState<string>('');
+  const [lastSyncTime, setLastSyncTime] = useState<string>('');
+  const [isApplyingRemote, setIsApplyingRemote] = useState<boolean>(false);
 
   // Navegación
   const [tab, setTab] = useState<
@@ -436,6 +457,188 @@ export default function CRMApp() {
   useEffect(() => {
     localStorage.setItem(LLAVE_STORAGE_PLANTILLA, plantillaMsg);
   }, [plantillaMsg]);
+
+  // ============================================================================
+  // SINCRONIZACIÓN EN LA NUBE (CLOUDFLARE WORKERS KV) - SIN PÉRDIDA DE DATOS
+  // ============================================================================
+  const cloudReadyRef = useRef(false);
+  const skipNextCloudSaveRef = useRef(false);
+  const cloudVersionRef = useRef<number>(0);
+  const savingInFlightRef = useRef(false);
+  const saveTimerRef = useRef<number | null>(null);
+
+  const getCurrentPayload = (): CrmStatePayload => ({
+    paises,
+    alumnas,
+    ingresos,
+    egresos,
+    fichas,
+    logsAuditoria,
+    plantillaMsg,
+  });
+
+  const latestPayloadRef = useRef<CrmStatePayload>(getCurrentPayload());
+  latestPayloadRef.current = getCurrentPayload();
+
+  const applyPayloadToState = (payload: CrmStatePayload) => {
+    skipNextCloudSaveRef.current = true;
+    setIsApplyingRemote(true);
+    setPaises(payload.paises);
+    setAlumnas(payload.alumnas);
+    setIngresos(payload.ingresos);
+    setEgresos(payload.egresos);
+    setFichas(payload.fichas);
+    setLogsAuditoria(payload.logsAuditoria);
+    setPlantillaMsg(payload.plantillaMsg);
+    setTimeout(() => setIsApplyingRemote(false), 50);
+  };
+
+  const pushToCloud = async (payloadToSave: CrmStatePayload) => {
+    if (!autenticado || savingInFlightRef.current) return;
+    savingInFlightRef.current = true;
+    setSyncStatus('syncing');
+    setSyncErrorMsg('');
+
+    try {
+      let attemptPayload = payloadToSave;
+      let baseVer = cloudVersionRef.current;
+
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const res = await saveCrmStateRemote(adminEmail, adminClave, baseVer, attemptPayload);
+        if (res.ok && typeof res.version === 'number') {
+          cloudVersionRef.current = res.version;
+          setRemoteVersion(res.version);
+          setSyncStatus('synced');
+          setLastSyncTime(new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+          return;
+        }
+
+        if (res.conflict && res.currentState) {
+          // Otro admin guardó justo antes: fusionar sin perder transacciones y reintentar
+          const merged = mergeCrmStates(attemptPayload, res.currentState);
+          applyPayloadToState(merged);
+          attemptPayload = merged;
+          baseVer = res.currentState.version;
+          continue;
+        }
+
+        setSyncStatus('error');
+        setSyncErrorMsg(res.error || 'Error al guardar en la nube');
+        return;
+      }
+
+      setSyncStatus('error');
+      setSyncErrorMsg('Conflicto de concurrencia. Haz clic en Sincronizar.');
+    } catch {
+      setSyncStatus('error');
+      setSyncErrorMsg('Sin conexión al servidor de Cloudflare.');
+    } finally {
+      savingInFlightRef.current = false;
+    }
+  };
+
+  const syncFromCloud = async (isInitial = false) => {
+    if (!autenticado || savingInFlightRef.current) return;
+    if (isInitial) {
+      setSyncStatus('syncing');
+      setSyncErrorMsg('');
+    }
+
+    try {
+      const since = isInitial ? undefined : cloudVersionRef.current || undefined;
+      const res = await fetchCrmStateRemote(adminEmail, adminClave, since);
+      if (!res.ok) {
+        setSyncStatus('error');
+        setSyncErrorMsg(res.error || 'Error al leer de la nube');
+        return;
+      }
+
+      if (res.unchanged) {
+        setSyncStatus('synced');
+        return;
+      }
+
+      const localSnapshot = latestPayloadRef.current;
+
+      if (!res.state) {
+        // Nube vacía (primera inicialización): subir los datos locales (ej. los +100 registros de esta PC)
+        cloudVersionRef.current = 0;
+        cloudReadyRef.current = true;
+        await pushToCloud(localSnapshot);
+        return;
+      }
+
+      // Si esta PC tiene registros locales que aún no están en la nube (migración desde localStorage), fusionarlos y subir
+      if (isInitial && hasLocalOnlyRecords(localSnapshot, res.state)) {
+        const merged = mergeCrmStates(localSnapshot, res.state);
+        applyPayloadToState(merged);
+        cloudVersionRef.current = res.version;
+        cloudReadyRef.current = true;
+        await pushToCloud(merged);
+        return;
+      }
+
+      // Adoptar estado de la nube
+      applyPayloadToState(res.state);
+      cloudVersionRef.current = res.version;
+      cloudReadyRef.current = true;
+      setRemoteVersion(res.version);
+      setSyncStatus('synced');
+      setLastSyncTime(new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+    } catch {
+      setSyncStatus('error');
+      setSyncErrorMsg('No se pudo conectar con Cloudflare.');
+    }
+  };
+
+  // Carga inicial y polling en vivo entre PCs cada 15 segundos
+  useEffect(() => {
+    if (!autenticado) {
+      cloudReadyRef.current = false;
+      return;
+    }
+
+    syncFromCloud(true);
+
+    const intervalId = window.setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        syncFromCloud(false);
+      }
+    }, 15000);
+
+    const handleFocus = () => {
+      syncFromCloud(false);
+    };
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [autenticado, adminEmail, adminClave]);
+
+  // Guardado automático inmediato en la nube ante cualquier cambio local
+  useEffect(() => {
+    if (!autenticado || !cloudReadyRef.current || isApplyingRemote) return;
+    if (skipNextCloudSaveRef.current) {
+      skipNextCloudSaveRef.current = false;
+      return;
+    }
+
+    if (saveTimerRef.current) {
+      window.clearTimeout(saveTimerRef.current);
+    }
+
+    saveTimerRef.current = window.setTimeout(() => {
+      pushToCloud(latestPayloadRef.current);
+    }, 350);
+
+    return () => {
+      if (saveTimerRef.current) {
+        window.clearTimeout(saveTimerRef.current);
+      }
+    };
+  }, [paises, alumnas, ingresos, egresos, fichas, logsAuditoria, plantillaMsg]);
 
   // Función Auditoría
   const registrarLogAuditoria = (
@@ -1483,30 +1686,46 @@ export default function CRMApp() {
   };
 
   // Manejo Login
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorLogin('');
     const normEmail = inputEmail.trim().toLowerCase();
-    const claveGuardada = localStorage.getItem(LLAVE_STORAGE_CLAVE) || CLAVE_DEFECTO;
+    const claveIngresada = inputClave.trim();
 
     if (!EMAILS_ADMIN_AUTORIZADOS.includes(normEmail)) {
       setErrorLogin('Acceso denegado: El correo no pertenece a los administradores autorizados.');
       return;
     }
-    if (inputClave.trim() !== claveGuardada) {
-      setErrorLogin('Contraseña incorrecta. Por favor verifica tus credenciales.');
-      return;
+
+    // Validar contra la nube (Cloudflare KV) para que todos los admins compartan la misma clave
+    const remoteCheck = await verifyCrmLoginRemote(normEmail, claveIngresada);
+    if (!remoteCheck.ok) {
+      // Fallback local solo si el servidor no responde (ej. dev local sin Functions)
+      if (remoteCheck.error?.includes('No se pudo conectar')) {
+        const claveGuardada = localStorage.getItem(LLAVE_STORAGE_CLAVE) || CLAVE_DEFECTO;
+        if (claveIngresada !== claveGuardada) {
+          setErrorLogin('Contraseña incorrecta. Por favor verifica tus credenciales.');
+          return;
+        }
+      } else {
+        setErrorLogin(remoteCheck.error || 'Contraseña incorrecta. Por favor verifica tus credenciales.');
+        return;
+      }
     }
 
+    localStorage.setItem(LLAVE_STORAGE_CLAVE, claveIngresada);
     sessionStorage.setItem(LLAVE_SESION_ACTIVA, '1');
     sessionStorage.setItem('totalhiit_crm_admin_email', normEmail);
+    sessionStorage.setItem('totalhiit_crm_admin_clave', claveIngresada);
     setAdminEmail(normEmail);
+    setAdminClave(claveIngresada);
     setAutenticado(true);
   };
 
   const handleLogout = () => {
     sessionStorage.removeItem(LLAVE_SESION_ACTIVA);
     sessionStorage.removeItem('totalhiit_crm_admin_email');
+    sessionStorage.removeItem('totalhiit_crm_admin_clave');
     setAutenticado(false);
   };
 
@@ -1715,6 +1934,33 @@ export default function CRMApp() {
                 Historial
               </button>
             </div>
+
+            {/* Indicador de Sincronización en la Nube */}
+            <button
+              onClick={() => syncFromCloud(false)}
+              disabled={syncStatus === 'syncing'}
+              title={syncErrorMsg || (lastSyncTime ? `Última sincronización: ${lastSyncTime} (v${remoteVersion})` : 'Sincronizar con la nube')}
+              className={`flex items-center gap-1.5 rounded-xl border px-2.5 py-1.5 text-xs font-bold transition cursor-pointer ${
+                syncStatus === 'error'
+                  ? 'border-rose-300 bg-rose-50 text-rose-700 hover:bg-rose-100'
+                  : syncStatus === 'syncing'
+                  ? 'border-amber-300 bg-amber-50 text-amber-700'
+                  : 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+              }`}
+            >
+              {syncStatus === 'error' ? (
+                <CloudOff size={13} />
+              ) : (
+                <Cloud size={13} className={syncStatus === 'syncing' ? 'animate-pulse' : ''} />
+              )}
+              <span className="hidden md:inline">
+                {syncStatus === 'error'
+                  ? 'Error Nube (Reintentar)'
+                  : syncStatus === 'syncing'
+                  ? 'Sincronizando...'
+                  : `Nube v${remoteVersion}`}
+              </span>
+            </button>
 
             <span className="hidden sm:inline-block rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-stone-600">
               {adminEmail}
@@ -3725,7 +3971,7 @@ export default function CRMApp() {
               <p className="mt-1 text-xs text-stone-500">Personaliza la clave de acceso para los 3 administradores.</p>
 
               <form
-                onSubmit={(e) => {
+                onSubmit={async (e) => {
                   e.preventDefault();
                   if (nuevaClave.trim() !== confirmarClave.trim()) {
                     setMsgSeguridad('⚠️ Las contraseñas no coinciden.');
@@ -3735,8 +3981,15 @@ export default function CRMApp() {
                     setMsgSeguridad('⚠️ Mínimo 6 caracteres.');
                     return;
                   }
+                  const res = await changeCrmPasswordRemote(adminEmail, adminClave, nuevaClave.trim());
                   localStorage.setItem(LLAVE_STORAGE_CLAVE, nuevaClave.trim());
-                  setMsgSeguridad('✅ Contraseña actualizada correctamente.');
+                  sessionStorage.setItem('totalhiit_crm_admin_clave', nuevaClave.trim());
+                  setAdminClave(nuevaClave.trim());
+                  setMsgSeguridad(
+                    res.ok
+                      ? '✅ Contraseña actualizada en la nube para todos los administradores.'
+                      : '✅ Contraseña actualizada localmente (aviso nube: ' + (res.error || 'sin conexión') + ').'
+                  );
                   setNuevaClave('');
                   setConfirmarClave('');
                 }}

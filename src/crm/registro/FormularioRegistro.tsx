@@ -335,6 +335,15 @@ export default function FormularioRegistro({ onVolverAdmin, esAdmin }: Props) {
     localStorage.removeItem(STORAGE_DRAFT);
     localStorage.setItem(STORAGE_FINALIZADA_ID, nuevaFicha.id);
 
+    // Enviar a la nube (Cloudflare KV) en segundo plano
+    try {
+      fetch('/api/crm-ficha', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(nuevaFicha),
+      }).catch(() => {});
+    } catch {}
+
     // Bloquear formulario y mostrar vista de confirmación
     setFichaFinalizada(nuevaFicha);
     window.scrollTo({ top: 0, behavior: 'smooth' });

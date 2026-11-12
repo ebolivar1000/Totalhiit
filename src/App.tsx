@@ -3,6 +3,7 @@ import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
 import { BootcampModules } from './components/BootcampModules';
 import { NutritionPillars } from './components/NutritionPillars';
+import { AppTotalHiitSection } from './components/AppTotalHiitSection';
 import { Pricing } from './components/Pricing';
 import { LiveClasses } from './components/LiveClasses';
 import { FAQ } from './components/FAQ';
@@ -66,6 +67,8 @@ export const App: React.FC = () => {
         />
 
         <NutritionPillars />
+
+        <AppTotalHiitSection onOpenPricing={handleOpenPricing} />
 
         <Pricing
           currency={currency}

@@ -38,6 +38,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currency, setCurrency, onOpenPri
           <a href="#programa" className="hover:text-rose-600 transition-colors">El Bootcamp</a>
           <a href="#clases" className="hover:text-rose-600 transition-colors">Clases (4 Semanas)</a>
           <a href="#nutricion" className="hover:text-rose-600 transition-colors">Nutrición +40</a>
+          <a href="#app-totalhiit" className="hover:text-rose-600 transition-colors font-semibold text-rose-600">App TotalHiiT</a>
           <a href="#precios" className="hover:text-rose-600 transition-colors">Precios</a>
           <a href="#faq" className="hover:text-rose-600 transition-colors">Preguntas</a>
         </nav>
@@ -140,6 +141,13 @@ export const Navbar: React.FC<NavbarProps> = ({ currency, setCurrency, onOpenPri
             className="block py-2 text-base font-medium text-stone-700 hover:text-rose-600"
           >
             Nutrición +40
+          </a>
+          <a
+            href="#app-totalhiit"
+            onClick={() => setMobileMenuOpen(false)}
+            className="block py-2 text-base font-bold text-rose-600 hover:text-rose-700"
+          >
+            App TotalHiiT
           </a>
           <a
             href="#precios"

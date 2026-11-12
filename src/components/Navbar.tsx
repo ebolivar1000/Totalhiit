@@ -33,12 +33,12 @@ export const Navbar: React.FC<NavbarProps> = ({ currency, setCurrency, onOpenPri
         </a>
 
         {/* Desktop Nav */}
-        <nav className="hidden md:flex items-center gap-6 lg:gap-7 text-sm font-medium text-stone-600">
+        <nav className="hidden md:flex items-center gap-6 lg:gap-7 text-sm font-semibold tracking-wide text-stone-700">
           <a href="#vivo" className="hover:text-rose-600 transition-colors">Clases en Vivo</a>
           <a href="#programa" className="hover:text-rose-600 transition-colors">El Bootcamp</a>
           <a href="#clases" className="hover:text-rose-600 transition-colors">Clases (4 Semanas)</a>
           <a href="#nutricion" className="hover:text-rose-600 transition-colors">Nutrición +40</a>
-          <a href="#app-totalhiit" className="hover:text-rose-600 transition-colors font-semibold text-rose-600">App TotalHiiT</a>
+          <a href="#app-totalhiit" className="text-rose-600 hover:text-rose-700 transition-colors font-bold">App TotalHiiT</a>
           <a href="#precios" className="hover:text-rose-600 transition-colors">Precios</a>
           <a href="#faq" className="hover:text-rose-600 transition-colors">Preguntas</a>
         </nav>

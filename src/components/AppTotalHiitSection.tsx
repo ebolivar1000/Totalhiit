@@ -91,22 +91,32 @@ export const AppTotalHiitSection: React.FC<AppTotalHiitSectionProps> = ({ onOpen
             </div>
           </div>
 
-          {/* Right Column: Looping Video */}
-          <div className="lg:col-span-6">
-            <div className="relative rounded-3xl overflow-hidden bg-stone-950 border border-stone-200 shadow-2xl shadow-stone-900/15 aspect-video">
-              <video
-                src="/images/Video_App_TH_opt.mp4"
-                autoPlay
-                loop
-                muted
-                playsInline
-                preload="metadata"
-                aria-label="Demostración en video de la App TotalHiiT"
-                className="w-full h-full object-cover"
-              />
-              <div className="pointer-events-none absolute top-4 left-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-stone-950/75 backdrop-blur-md border border-white/15 text-white text-xs font-semibold">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                Vista previa · App TotalHiiT
+          {/* Right Column: True Vertical Video (sin bandas negras) */}
+          <div className="lg:col-span-6 flex justify-center">
+            <div className="relative w-full max-w-[320px] sm:max-w-[360px] rounded-[2.5rem] p-3 bg-gradient-to-b from-stone-800 to-stone-950 border border-stone-700/60 shadow-2xl shadow-stone-900/30">
+              {/* Speaker / Notch simulator */}
+              <div className="absolute top-5 left-1/2 -translate-x-1/2 w-20 h-4 bg-stone-900 rounded-full z-10 border border-white/5 flex items-center justify-center">
+                <div className="w-2.5 h-2.5 rounded-full bg-stone-950 mr-2 border border-white/10" />
+                <div className="w-8 h-1 bg-stone-800 rounded-full" />
+              </div>
+
+              {/* Screen Container with exact vertical aspect ratio */}
+              <div className="relative rounded-[2rem] overflow-hidden bg-stone-950 border border-stone-800/80 shadow-inner">
+                <video
+                  src="/images/Video_App_TH_vertical.mp4"
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  preload="metadata"
+                  aria-label="Demostración en video vertical de la App TotalHiiT"
+                  className="w-full h-auto block object-cover"
+                />
+
+                <div className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-stone-950/85 backdrop-blur-md border border-white/15 text-white text-[11px] font-semibold whitespace-nowrap shadow-lg">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  App TotalHiiT en vivo
+                </div>
               </div>
             </div>
           </div>

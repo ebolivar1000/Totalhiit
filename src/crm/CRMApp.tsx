@@ -677,6 +677,20 @@ export default function CRMApp() {
     return Array.from(set);
   }, [paises, alumnas]);
 
+  // Lista ordenada alfabéticamente de alumnas (Nombre y Apellido)
+  const alumnasOrdenadasPorNombre = useMemo(() => {
+    return [...alumnas].sort((a, b) =>
+      a.nombre_completo.localeCompare(b.nombre_completo, 'es', { sensitivity: 'base' })
+    );
+  }, [alumnas]);
+
+  // Lista ordenada numéricamente/alfabéticamente por Código
+  const alumnasOrdenadasPorCodigo = useMemo(() => {
+    return [...alumnas].sort((a, b) =>
+      a.codigo.localeCompare(b.codigo, undefined, { numeric: true })
+    );
+  }, [alumnas]);
+
   // Meses Únicos en Ingresos y Egresos
   const mesesDisponibles = useMemo(() => {
     const set = new Set<string>();
@@ -740,6 +754,7 @@ export default function CRMApp() {
   const [filtroIngMes, setFiltroIngMes] = useState<string>('todos');
   const [filtroIngMoneda, setFiltroIngMoneda] = useState<string>('todas');
   const [filtroIngPais, setFiltroIngPais] = useState<string>('todos');
+  const [filtroIngCodigo, setFiltroIngCodigo] = useState<string>('todos');
   const [filtroIngAlumna, setFiltroIngAlumna] = useState<string>('todas');
   const [filtroIngTipo, setFiltroIngTipo] = useState<string>('todos');
   const [busquedaIngresos, setBusquedaIngresos] = useState('');
@@ -1159,6 +1174,11 @@ export default function CRMApp() {
       const matchMon = filtroIngMoneda === 'todas' || i.moneda_original === filtroIngMoneda;
       const matchTipo = filtroIngTipo === 'todos' || i.tipo_ingreso === filtroIngTipo;
 
+      let matchCodigo = true;
+      if (filtroIngCodigo !== 'todos') {
+        matchCodigo = i.alumna_codigo === filtroIngCodigo;
+      }
+
       let matchAlumna = true;
       if (filtroIngAlumna !== 'todas') {
         matchAlumna = i.alumna_codigo === filtroIngAlumna;
@@ -1180,9 +1200,9 @@ export default function CRMApp() {
         (i.cliente_o_marca || '').toLowerCase().includes(q) ||
         (i.alumna_codigo || '').toLowerCase().includes(q);
 
-      return matchMes && matchMon && matchTipo && matchAlumna && matchPais && matchBusqueda;
+      return matchMes && matchMon && matchTipo && matchCodigo && matchAlumna && matchPais && matchBusqueda;
     });
-  }, [ingresos, filtroIngMes, filtroIngMoneda, filtroIngTipo, filtroIngAlumna, filtroIngPais, busquedaIngresos, alumnas]);
+  }, [ingresos, filtroIngMes, filtroIngMoneda, filtroIngTipo, filtroIngCodigo, filtroIngAlumna, filtroIngPais, busquedaIngresos, alumnas]);
 
   // Totales Ingresos Filtrados
   const totalesIngresosFiltrados = useMemo(() => {
@@ -3125,17 +3145,44 @@ export default function CRMApp() {
                 </select>
               </div>
 
-              {/* Filtro Alumna */}
+              {/* Filtro Código */}
               <div>
-                <label className="block text-[10px] font-bold text-stone-400 uppercase mb-0.5">Alumna Específica</label>
+                <label className="block text-[10px] font-bold text-stone-400 uppercase mb-0.5">Código</label>
+                <select
+                  value={filtroIngCodigo}
+                  onChange={(e) => {
+                    const cod = e.target.value;
+                    setFiltroIngCodigo(cod);
+                    if (cod !== 'todos' && filtroIngAlumna !== 'todas' && filtroIngAlumna !== cod) {
+                      setFiltroIngAlumna('todas');
+                    }
+                  }}
+                  className="w-full rounded-xl border border-stone-300 bg-white p-2 text-xs outline-none"
+                >
+                  <option value="todos">Todos los códigos</option>
+                  {alumnasOrdenadasPorCodigo.map((a) => (
+                    <option key={a.codigo} value={a.codigo}>{a.codigo}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Filtro Alumna (Nombre y Apellido) */}
+              <div>
+                <label className="block text-[10px] font-bold text-stone-400 uppercase mb-0.5">Alumna</label>
                 <select
                   value={filtroIngAlumna}
-                  onChange={(e) => setFiltroIngAlumna(e.target.value)}
+                  onChange={(e) => {
+                    const cod = e.target.value;
+                    setFiltroIngAlumna(cod);
+                    if (cod !== 'todas' && filtroIngCodigo !== 'todos' && filtroIngCodigo !== cod) {
+                      setFiltroIngCodigo('todos');
+                    }
+                  }}
                   className="w-full rounded-xl border border-stone-300 bg-white p-2 text-xs outline-none"
                 >
                   <option value="todas">Todas las alumnas</option>
-                  {alumnas.map((a) => (
-                    <option key={a.codigo} value={a.codigo}>{a.codigo} — {a.nombre_completo}</option>
+                  {alumnasOrdenadasPorNombre.map((a) => (
+                    <option key={a.codigo} value={a.codigo}>{a.nombre_completo}</option>
                   ))}
                 </select>
               </div>

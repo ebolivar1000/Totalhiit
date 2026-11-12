@@ -692,6 +692,35 @@ export default function CRMApp() {
     return Array.from(set).sort().reverse();
   }, [ingresos, egresos]);
 
+  // Cuotas Pagadas Únicas (para filtro preciso por Cuota Pagada)
+  const cuotasPagadasDisponibles = useMemo(() => {
+    const map = new Map<string, { label: string; sortKey: number }>();
+
+    ingresos.forEach((i) => {
+      const label =
+        i.mes_pagado_label?.trim() ||
+        (i.mes_periodo ? `${NOMBRES_MESES[i.mes_periodo - 1]} ${i.anio_periodo}` : '');
+      if (!label) return;
+
+      const anio = i.anio_periodo || (label.match(/\d{4}/) ? Number(label.match(/\d{4}/)![0]) : 2026);
+      const nombreMesEncontrado = NOMBRES_MESES.findIndex((nom) =>
+        label.toLowerCase().includes(nom.toLowerCase())
+      );
+      const mesNum = (i.mes_periodo && i.mes_periodo >= 1 && i.mes_periodo <= 12)
+        ? i.mes_periodo
+        : (nombreMesEncontrado >= 0 ? nombreMesEncontrado + 1 : 1);
+
+      const sortKey = anio * 100 + mesNum;
+      if (!map.has(label) || sortKey > map.get(label)!.sortKey) {
+        map.set(label, { label, sortKey });
+      }
+    });
+
+    return Array.from(map.values())
+      .sort((a, b) => b.sortKey - a.sortKey)
+      .map((x) => x.label);
+  }, [ingresos]);
+
   // ==============================================================================
   // ESTADOS DE FILTROS
   // ==============================================================================
@@ -1117,8 +1146,16 @@ export default function CRMApp() {
   // Ingresos Filtrados
   const ingresosFiltrados = useMemo(() => {
     return ingresos.filter((i) => {
+      const cuotaLabel =
+        i.mes_pagado_label?.trim() ||
+        (i.mes_periodo ? `${NOMBRES_MESES[i.mes_periodo - 1]} ${i.anio_periodo}` : '');
       const mesStr = `${i.anio_periodo}-${String(i.mes_periodo).padStart(2, '0')}`;
-      const matchMes = filtroIngMes === 'todos' || mesStr === filtroIngMes || i.fecha_pago.startsWith(filtroIngMes);
+      const matchMes =
+        filtroIngMes === 'todos' ||
+        cuotaLabel === filtroIngMes ||
+        cuotaLabel.toLowerCase() === filtroIngMes.toLowerCase() ||
+        mesStr === filtroIngMes ||
+        i.fecha_pago.startsWith(filtroIngMes);
       const matchMon = filtroIngMoneda === 'todas' || i.moneda_original === filtroIngMoneda;
       const matchTipo = filtroIngTipo === 'todos' || i.tipo_ingreso === filtroIngTipo;
 
@@ -1420,7 +1457,7 @@ export default function CRMApp() {
   };
 
   const exportarIngresosExcel = () => {
-    const columnas = ['ID', 'Fecha Cobro', 'Período', 'Tipo Ingreso', 'Alumna / Marca', 'Concepto', 'Moneda', 'Monto Original', 'Equiv USD', 'Equiv ARS', 'Método'];
+    const columnas = ['ID', 'Fecha Cobro', 'Cuota Pagada', 'Tipo Ingreso', 'Alumna / Marca', 'Concepto', 'Moneda', 'Monto Original', 'Equiv USD', 'Equiv ARS', 'Método'];
     const filas = ingresosFiltrados.map((i) => [
       i.id,
       i.fecha_pago,
@@ -1438,7 +1475,7 @@ export default function CRMApp() {
   };
 
   const exportarIngresosPDF = () => {
-    const columnas = ['Fecha', 'Período', 'Tipo', 'Detalle / Alumna', 'Monto Original', 'Equiv USD', 'Equiv ARS'];
+    const columnas = ['Fecha', 'Cuota Pagada', 'Tipo', 'Detalle / Alumna', 'Monto Original', 'Equiv USD', 'Equiv ARS'];
     const filas = ingresosFiltrados.map((i) => [
       i.fecha_pago,
       i.mes_pagado_label || `${i.mes_periodo}/${i.anio_periodo}`,
@@ -3027,17 +3064,17 @@ export default function CRMApp() {
                   />
                 </div>
               </div>
-              {/* Filtro Mes */}
+              {/* Filtro Cuota Pagada */}
               <div>
-                <label className="block text-[10px] font-bold text-stone-400 uppercase mb-0.5">Mes / Período</label>
+                <label className="block text-[10px] font-bold text-stone-400 uppercase mb-0.5">Cuota Pagada</label>
                 <select
                   value={filtroIngMes}
                   onChange={(e) => setFiltroIngMes(e.target.value)}
                   className="w-full rounded-xl border border-stone-300 bg-white p-2 text-xs outline-none"
                 >
-                  <option value="todos">Todos los meses</option>
-                  {mesesDisponibles.map((m) => (
-                    <option key={m} value={m}>{m}</option>
+                  <option value="todos">Todas las cuotas</option>
+                  {cuotasPagadasDisponibles.map((cuota) => (
+                    <option key={cuota} value={cuota}>{cuota}</option>
                   ))}
                 </select>
               </div>
@@ -3133,7 +3170,7 @@ export default function CRMApp() {
                   <thead className="border-b border-stone-200 bg-stone-50 font-bold text-stone-600">
                     <tr>
                       <th className="py-3 px-3.5">Fecha</th>
-                      <th className="py-3 px-3.5">Mes Pagado</th>
+                      <th className="py-3 px-3.5">Cuota Pagada</th>
                       <th className="py-3 px-3.5">Tipo</th>
                       <th className="py-3 px-3.5">Alumna / Marca</th>
                       <th className="py-3 px-3.5">Concepto</th>

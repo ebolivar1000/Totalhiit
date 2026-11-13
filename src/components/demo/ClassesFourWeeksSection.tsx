@@ -60,7 +60,7 @@ export const ClassesFourWeeksSection: React.FC<ClassesFourWeeksSectionProps> = (
           loop
           muted
           playsInline
-          className="w-full h-full object-cover filter brightness-95 contrast-105"
+          className="w-full h-full object-cover scale-[1.32] sm:scale-[1.38] filter brightness-95 contrast-105 transform-gpu"
         />
         {/* Velo muy sutil para que el video se distinga perfectamente */}
         <div className="absolute inset-0 bg-stone-950/40" />

@@ -66,7 +66,7 @@ export const KineticLiveClassesHero: React.FC = () => {
           muted
           playsInline
           preload="auto"
-          className="w-full h-full object-cover scale-100 filter brightness-100 contrast-105"
+          className="w-full h-full object-cover scale-[1.32] sm:scale-[1.38] filter brightness-100 contrast-105 transform-gpu"
         />
 
         {/* Cinematic Tint muy sutil (permite ver el video con total claridad) */}

@@ -349,11 +349,11 @@ export default function FormularioRegistro({ onVolverAdmin, esAdmin }: Props) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Exportar Ficha a Excel (49 Columnas idénticas a Google Sheets)
+  // Exportar Ficha a Excel
   const exportarMiFichaExcel = (ficha: FichaRegistro) => {
     const fila = fichaAFila49(ficha);
     exportarAExcel(
-      `Ficha_TotalHIIT_${ficha.nombre.replace(/\s+/g, '_')}_49_Campos`,
+      `Ficha_TotalHIIT_${ficha.nombre.replace(/\s+/g, '_')}`,
       `Ficha Oficial de ${ficha.nombre_completo}`,
       COLUMNAS_49_GOOGLE_SHEETS,
       [fila]
@@ -417,7 +417,7 @@ export default function FormularioRegistro({ onVolverAdmin, esAdmin }: Props) {
 
     exportarAPDF(
       `Ficha Integral de ${ficha.nombre_completo}`,
-      `Expediente Oficial de Salud & Entrenamiento TOTALHIIT (49 Campos)`,
+      `Expediente Oficial de Salud & Entrenamiento TOTALHIIT`,
       columnas,
       filas,
       [
@@ -450,7 +450,7 @@ export default function FormularioRegistro({ onVolverAdmin, esAdmin }: Props) {
             </p>
             <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 border border-emerald-300 px-3 py-1 text-[11px] font-bold text-emerald-900">
               <Lock size={12} />
-              <span>Formulario Bloqueado (Solo Lectura) • 49 Preguntas Registradas</span>
+              <span>Formulario Bloqueado (Solo Lectura) • Registro Completado</span>
             </div>
           </div>
 
@@ -462,7 +462,7 @@ export default function FormularioRegistro({ onVolverAdmin, esAdmin }: Props) {
               className="flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 p-4 font-bold text-white hover:bg-emerald-700 shadow-sm transition cursor-pointer"
             >
               <FileSpreadsheet size={18} />
-              <span>Exportar Mi Ficha a Excel (49 Cols)</span>
+              <span>Exportar Mi Ficha a Excel</span>
             </button>
             <button
               type="button"
@@ -536,7 +536,7 @@ export default function FormularioRegistro({ onVolverAdmin, esAdmin }: Props) {
             <div className="flex items-center justify-between">
               <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-500/20 border border-rose-400/40 px-3 py-1 text-[11px] font-bold text-rose-300">
                 <Sparkles size={12} />
-                <span>Formulario Oficial TOTALHIIT • 49 Columnas</span>
+                <span>Formulario Oficial TOTALHIIT</span>
               </span>
 
               {onVolverAdmin && (
@@ -552,7 +552,7 @@ export default function FormularioRegistro({ onVolverAdmin, esAdmin }: Props) {
             </div>
 
             <h1 className="text-xl sm:text-2xl font-black tracking-tight">
-              Planilla Integral de Ingreso & Salud de Alumnas
+              Planilla Integral de Ingreso & Salud
             </h1>
             <p className="text-xs text-stone-300 leading-relaxed">
               Hola, ¡Bienvenida a TOTALHIIT! Este formulario tiene como fin conocerte mejor para llevar a cabo un entrenamiento seguro, divertido, eficiente y funcional adaptado a tu cuerpo.
@@ -616,7 +616,7 @@ export default function FormularioRegistro({ onVolverAdmin, esAdmin }: Props) {
             >
               <span className="flex items-center gap-2">
                 <User size={16} className="text-rose-600" />
-                <span>1. Datos Personales (Cols 1 - 9)</span>
+                <span>1. Datos Personales</span>
               </span>
               {seccionAbierta === 1 ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
             </button>
@@ -741,7 +741,7 @@ export default function FormularioRegistro({ onVolverAdmin, esAdmin }: Props) {
             >
               <span className="flex items-center gap-2">
                 <Heart size={16} className="text-rose-600" />
-                <span>2. Contextura Corporal (Cols 10 - 12)</span>
+                <span>2. Contextura Corporal</span>
               </span>
               {seccionAbierta === 2 ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
             </button>
@@ -796,7 +796,7 @@ export default function FormularioRegistro({ onVolverAdmin, esAdmin }: Props) {
             >
               <span className="flex items-center gap-2">
                 <ShieldCheck size={16} className="text-rose-600" />
-                <span>3. Datos Médicos (Cols 13 - 15)</span>
+                <span>3. Datos Médicos</span>
               </span>
               {seccionAbierta === 3 ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
             </button>
@@ -856,7 +856,7 @@ export default function FormularioRegistro({ onVolverAdmin, esAdmin }: Props) {
             >
               <span className="flex items-center gap-2">
                 <AlertCircle size={16} className="text-amber-600" />
-                <span>4. Enfermedades y Patologías (Cols 16 - 24)</span>
+                <span>4. Enfermedades y Patologías</span>
               </span>
               {seccionAbierta === 4 ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
             </button>
@@ -985,7 +985,7 @@ export default function FormularioRegistro({ onVolverAdmin, esAdmin }: Props) {
             >
               <span className="flex items-center gap-2">
                 <Heart size={16} className="text-rose-600" />
-                <span>5. Sustancias, Suplementos o Medicamentos (Cols 25 - 28)</span>
+                <span>5. Sustancias, Suplementos o Medicamentos</span>
               </span>
               {seccionAbierta === 5 ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
             </button>
@@ -1056,7 +1056,7 @@ export default function FormularioRegistro({ onVolverAdmin, esAdmin }: Props) {
             >
               <span className="flex items-center gap-2">
                 <Sparkles size={16} className="text-rose-600" />
-                <span>6. Medios de Comunicación & Redes Sociales (Cols 29 - 37)</span>
+                <span>6. Medios de Comunicación & Redes Sociales</span>
               </span>
               {seccionAbierta === 6 ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
             </button>
@@ -1185,7 +1185,7 @@ export default function FormularioRegistro({ onVolverAdmin, esAdmin }: Props) {
             >
               <span className="flex items-center gap-2">
                 <Sparkles size={16} className="text-rose-600" />
-                <span>7. Objetivos y Metas (Cols 38 - 40)</span>
+                <span>7. Objetivos y Metas</span>
               </span>
               {seccionAbierta === 7 ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
             </button>
@@ -1244,7 +1244,7 @@ export default function FormularioRegistro({ onVolverAdmin, esAdmin }: Props) {
             >
               <span className="flex items-center gap-2">
                 <Heart size={16} className="text-rose-600" />
-                <span>8. ¡¡Tu Historia!! Actividad Física (Cols 41 - 45)</span>
+                <span>8. ¡¡Tu Historia!! Actividad Física</span>
               </span>
               {seccionAbierta === 8 ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
             </button>
@@ -1325,7 +1325,7 @@ export default function FormularioRegistro({ onVolverAdmin, esAdmin }: Props) {
             >
               <span className="flex items-center gap-2">
                 <Heart size={16} className="text-rose-600" />
-                <span>9. Cómo estás Emocionalmente (Cols 46 - 48)</span>
+                <span>9. Cómo estás Emocionalmente</span>
               </span>
               {seccionAbierta === 9 ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
             </button>
@@ -1382,7 +1382,7 @@ export default function FormularioRegistro({ onVolverAdmin, esAdmin }: Props) {
             >
               <span className="flex items-center gap-2">
                 <Sparkles size={16} className="text-rose-600" />
-                <span>10. Importante & Compromiso (Col 49)</span>
+                <span>10. Importante & Compromiso</span>
               </span>
               {seccionAbierta === 10 ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
             </button>
@@ -1423,7 +1423,7 @@ export default function FormularioRegistro({ onVolverAdmin, esAdmin }: Props) {
               className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-700 hover:to-pink-700 px-8 py-3.5 text-xs font-black uppercase tracking-wide text-white shadow-md hover:shadow-lg transition cursor-pointer"
             >
               <Lock size={16} />
-              <span>FINALIZAR REGISTRO (49 Campos Oficiales)</span>
+              <span>FINALIZAR REGISTRO</span>
             </button>
           </div>
         </form>

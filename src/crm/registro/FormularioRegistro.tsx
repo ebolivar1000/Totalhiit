@@ -14,6 +14,8 @@ import {
   FileText,
   Heart,
   Lock,
+  Mail,
+  MessageCircle,
   Save,
   ShieldCheck,
   Sparkles,
@@ -30,6 +32,59 @@ import { exportarAExcel, exportarAPDF } from '../exportador';
 const STORAGE_FICHAS = 'totalhiit_crm_fichas_registro_v4';
 const STORAGE_DRAFT = 'totalhiit_crm_registro_draft_v4';
 const STORAGE_FINALIZADA_ID = 'totalhiit_mi_ficha_id_v4';
+
+// Datos oficiales de contacto y notificaciones administrativas
+export const VALENTINA_WHATSAPP = '5491154188296'; // +54 11 5418 8296
+export const ADMIN_EMAIL_PRINCIPAL = 'totalhiit1@gmail.com';
+export const ADMIN_EMAILS_CC = 'ebolivar1000@gmail.com,caribialabs@gmail.com';
+
+/**
+ * Genera el enlace de WhatsApp con mensaje personalizado para notificar a Valentina (+54 11 5418 8296)
+ */
+export const generarEnlaceWhatsAppAviso = (ficha: FichaRegistro): string => {
+  const mensaje = `¡Hola Valentina! 👋 Acabo de completar mi Ficha de Registro Oficial en TOTALHIIT.
+
+📋 *Mis Datos de Registro:*
+• *Alumna:* ${ficha.nombre_completo}
+• *WhatsApp:* ${ficha.telefono_whatsapp}
+• *Email:* ${ficha.email}
+• *Objetivo:* ${ficha.objetivo_principal}
+• *Ubicación:* ${ficha.localidad_pais}
+• *Medidas:* Altura ${ficha.altura} | Peso ${ficha.peso} (Talla ${ficha.talla_remera})
+• *Alergias / Lesiones:* ${ficha.alergias} | ${ficha.lesiones_desde_cuando || ficha.problemas_musculares_oseos}
+
+¡Quedo a la espera de tu validación para coordinar e iniciar las clases! 💪✨`;
+
+  return `https://wa.me/${VALENTINA_WHATSAPP}?text=${encodeURIComponent(mensaje)}`;
+};
+
+/**
+ * Genera el enlace de correo mailto para alertar a los administradores
+ */
+export const generarEnlaceEmailAviso = (ficha: FichaRegistro): string => {
+  const subject = `🚨 Nueva Alumna Registrada en TOTALHIIT: ${ficha.nombre_completo}`;
+  const body = `Hola Valentina y equipo administrativo de TOTALHIIT,
+
+La alumna ${ficha.nombre_completo} acaba de completar su Ficha de Registro Oficial en la plataforma.
+
+📋 Resumen de datos:
+- Nombre y Apellido: ${ficha.nombre_completo}
+- Teléfono / WhatsApp: ${ficha.telefono_whatsapp}
+- Email: ${ficha.email}
+- Objetivo Principal: ${ficha.objetivo_principal}
+- Ubicación: ${ficha.localidad_pais}
+- Contextura: Altura ${ficha.altura} | Peso ${ficha.peso} (Talla Remera ${ficha.talla_remera})
+- Alergias: ${ficha.alergias}
+- Lesiones o patologías: ${ficha.lesiones_desde_cuando || ficha.problemas_musculares_oseos}
+- Medicamentos diarios: ${ficha.medicamentos_detalle || ficha.toma_medicamentos}
+- Contacto de Emergencia: ${ficha.contacto_emergencia}
+- Fecha de Registro: ${ficha.fecha_registro}
+
+Accede al CRM para validar e incorporar al padrón oficial:
+https://totalhiit.pages.dev/crm`;
+
+  return `mailto:${ADMIN_EMAIL_PRINCIPAL}?cc=${ADMIN_EMAILS_CC}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+};
 
 interface Props {
   onVolverAdmin?: () => void;
@@ -130,6 +185,14 @@ export default function FormularioRegistro({ onVolverAdmin, esAdmin }: Props) {
           const encontrada = list.find((f) => f.id === miFichaId);
           if (encontrada && encontrada.finalizado) {
             setFichaFinalizada(encontrada);
+            // Re-sincronizar con el servidor por si antes falló la conexión
+            try {
+              fetch('/api/crm-ficha', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(encontrada),
+              }).catch(() => {});
+            } catch {}
             return;
           }
         } catch {}
@@ -335,13 +398,50 @@ export default function FormularioRegistro({ onVolverAdmin, esAdmin }: Props) {
     localStorage.removeItem(STORAGE_DRAFT);
     localStorage.setItem(STORAGE_FINALIZADA_ID, nuevaFicha.id);
 
-    // Enviar a la nube (Cloudflare KV) en segundo plano
+    // 1. Enviar a la nube (Cloudflare KV) en segundo plano
     try {
       fetch('/api/crm-ficha', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(nuevaFicha),
       }).catch(() => {});
+    } catch {}
+
+    // 2. Enviar notificación por Email automática a los administradores vía FormSubmit
+    try {
+      fetch('https://formsubmit.co/ajax/totalhiit1@gmail.com', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+          Origin: window.location.origin,
+          Referer: window.location.href,
+        },
+        body: JSON.stringify({
+          _subject: `🚨 NUEVA ALUMNA REGISTRADA EN TOTALHIIT: ${nuevaFicha.nombre_completo}`,
+          _cc: ADMIN_EMAILS_CC,
+          _replyto: nuevaFicha.email,
+          alumna: nuevaFicha.nombre_completo,
+          telefono_whatsapp: nuevaFicha.telefono_whatsapp,
+          email: nuevaFicha.email,
+          edad: nuevaFicha.edad,
+          ubicacion: nuevaFicha.localidad_pais,
+          objetivo_principal: nuevaFicha.objetivo_principal,
+          altura_peso: `${nuevaFicha.altura} | ${nuevaFicha.peso} (Talla ${nuevaFicha.talla_remera})`,
+          alergias: nuevaFicha.alergias,
+          problemas_o_lesiones: nuevaFicha.lesiones_desde_cuando || nuevaFicha.problemas_musculares_oseos,
+          medicamentos: nuevaFicha.medicamentos_detalle || nuevaFicha.toma_medicamentos,
+          contacto_emergencia: nuevaFicha.contacto_emergencia,
+          fecha_registro: nuevaFicha.fecha_registro,
+          enlace_crm: 'https://totalhiit.pages.dev/crm',
+        }),
+      }).catch(() => {});
+    } catch {}
+
+    // 3. Intentar abrir WhatsApp directo a Valentina en una nueva pestaña
+    try {
+      const waUrl = generarEnlaceWhatsAppAviso(nuevaFicha);
+      window.open(waUrl, '_blank');
     } catch {}
 
     // Bloquear formulario y mostrar vista de confirmación
@@ -451,6 +551,47 @@ export default function FormularioRegistro({ onVolverAdmin, esAdmin }: Props) {
             <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 border border-emerald-300 px-3 py-1 text-[11px] font-bold text-emerald-900">
               <Lock size={12} />
               <span>Formulario Bloqueado (Solo Lectura) • Registro Completado</span>
+            </div>
+          </div>
+
+          {/* AVISO DIRECTO POR WHATSAPP Y EMAIL A VALENTINA Y ADMINISTRADORES */}
+          <div className="rounded-3xl border-2 border-emerald-500 bg-gradient-to-br from-emerald-50 via-teal-50 to-white p-6 shadow-md space-y-4">
+            <div className="flex items-start gap-3.5">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-md">
+                <MessageCircle size={26} />
+              </div>
+              <div className="space-y-1">
+                <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 px-2.5 py-0.5 text-[11px] font-black uppercase tracking-wider">
+                  <span>🔔 Paso Final: Aviso para Validación</span>
+                </div>
+                <h3 className="text-base sm:text-lg font-black text-stone-900 leading-tight">
+                  Avisa a Valentina (+54 11 5418-8296) para Validar tu Ingreso
+                </h3>
+                <p className="text-xs text-stone-600 leading-relaxed">
+                  Para que Valentina confirme la recepción de tus datos, prepare tu plan personalizado y te dé la bienvenida oficial al grupo, por favor envíale el aviso de finalización:
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-3 pt-2">
+              <a
+                href={generarEnlaceWhatsAppAviso(fichaFinalizada)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 flex items-center justify-center gap-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] py-4 px-5 font-black text-white text-sm shadow-md transition cursor-pointer text-center"
+              >
+                <MessageCircle size={22} className="shrink-0" />
+                <span>📱 Avisar a Valentina por WhatsApp (+54 11 5418-8296)</span>
+              </a>
+
+              <a
+                href={generarEnlaceEmailAviso(fichaFinalizada)}
+                className="flex items-center justify-center gap-2 rounded-2xl border border-stone-300 bg-white hover:bg-stone-50 py-3.5 px-4 font-bold text-stone-700 text-xs shadow-xs transition text-center"
+                title="Enviar aviso por correo electrónico a Valentina y a la Administración"
+              >
+                <Mail size={16} className="text-rose-600 shrink-0" />
+                <span>📧 Avisar por Email</span>
+              </a>
             </div>
           </div>
 

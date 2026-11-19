@@ -83,14 +83,43 @@ export const onRequestGet = async (ctx: Ctx): Promise<Response> => {
   }
 
   const stored = (await ctx.env.SITE_CONTENT.get(CRM_STATE_KEY, 'json')) as StoredCrmState | null;
+  const incoming =
+    ((await ctx.env.SITE_CONTENT.get('incoming_fichas_v1', 'json')) as Array<Record<string, unknown>>) || [];
+
   if (!stored) {
+    if (incoming.length > 0) {
+      return json({
+        ok: true,
+        state: {
+          paises: [],
+          alumnas: [],
+          ingresos: [],
+          egresos: [],
+          fichas: incoming,
+          logsAuditoria: [],
+          plantillaMsg: '',
+        },
+        version: 1,
+      });
+    }
     return json({ ok: true, state: null, version: 0 });
+  }
+
+  // Fusionar fichas entrantes que no estén aún en el estado persistido
+  if (incoming.length > 0 && Array.isArray(stored.fichas)) {
+    const ids = new Set(
+      stored.fichas.map((f) => (f && typeof f === 'object' ? (f as Record<string, unknown>).id : null))
+    );
+    const nuevas = incoming.filter((f) => f && typeof f === 'object' && !ids.has(f.id));
+    if (nuevas.length > 0) {
+      stored.fichas = [...nuevas, ...stored.fichas];
+    }
   }
 
   const url = new URL(ctx.request.url);
   const sinceRaw = url.searchParams.get('sinceVersion');
   const sinceVersion = sinceRaw !== null ? Number(sinceRaw) : NaN;
-  if (Number.isFinite(sinceVersion) && sinceVersion === stored.version) {
+  if (Number.isFinite(sinceVersion) && sinceVersion === stored.version && incoming.length === 0) {
     return json({
       ok: true,
       unchanged: true,

@@ -1,8 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle,
+  ArrowRight,
   ArrowUpDown,
   BarChart3,
+  BellRing,
   Calendar,
   CheckCircle2,
   CheckSquare,
@@ -426,7 +428,29 @@ export default function CRMApp() {
   const [fichaModal, setFichaModal] = useState<FichaRegistro | null>(null);
   const [busquedaFichas, setBusquedaFichas] = useState('');
   const [filtroObjetivoFichas, setFiltroObjetivoFichas] = useState<string>('todos');
+  const [filtroEstadoFichas, setFiltroEstadoFichas] = useState<'todas' | 'pendientes' | 'en_padron'>('todas');
   const [copiadoLinkRegistro, setCopiadoLinkRegistro] = useState(false);
+
+  // Sincronización automática de fichas recibidas en la nube al abrir el CRM
+  useEffect(() => {
+    fetch('/api/crm-ficha')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: any) => {
+        if (data && Array.isArray(data.fichas) && data.fichas.length > 0) {
+          setFichas((prev) => {
+            const idsExistentes = new Set(prev.map((f) => f.id));
+            const nuevas = data.fichas.filter((f: any) => f && f.id && !idsExistentes.has(f.id));
+            if (nuevas.length > 0) {
+              const actualizadas = [...nuevas, ...prev];
+              localStorage.setItem('totalhiit_crm_fichas_registro_v4', JSON.stringify(actualizadas));
+              return actualizadas;
+            }
+            return prev;
+          });
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // Plantilla de Recordatorios
   const [plantillaMsg, setPlantillaMsg] = useState<string>(() => {
@@ -1598,6 +1622,19 @@ export default function CRMApp() {
     );
   };
 
+  // Fichas pendientes de validación (no incorporadas aún al padrón de alumnas)
+  const fichasPendientesValidacion = useMemo(() => {
+    return fichas.filter((f) => {
+      const fEmail = (f.email || '').toLowerCase().trim();
+      const fNombre = (f.nombre_completo || `${f.nombre} ${f.apellido}`).toLowerCase().trim();
+      return !alumnas.some((a) => {
+        const aEmail = (a.email || '').toLowerCase().trim();
+        const aNombre = (a.nombre_completo || '').toLowerCase().trim();
+        return (fEmail && aEmail && fEmail === aEmail) || (fNombre && aNombre && fNombre === aNombre);
+      });
+    });
+  }, [fichas, alumnas]);
+
   // Memos y Exportaciones de Fichas de Alumnas (Google Form Integrado)
   const fichasFiltradas = useMemo(() => {
     return fichas.filter((f) => {
@@ -1611,9 +1648,17 @@ export default function CRMApp() {
 
       const matchObj = filtroObjetivoFichas === 'todos' || f.objetivo_principal === filtroObjetivoFichas;
 
+      const yaEnPadron = alumnas.some(
+        (a) =>
+          a.email?.toLowerCase().trim() === f.email.toLowerCase().trim() ||
+          a.nombre_completo.toLowerCase().trim() === f.nombre_completo.toLowerCase().trim()
+      );
+      if (filtroEstadoFichas === 'pendientes' && yaEnPadron) return false;
+      if (filtroEstadoFichas === 'en_padron' && !yaEnPadron) return false;
+
       return matchBusqueda && matchObj;
     });
-  }, [fichas, busquedaFichas, filtroObjetivoFichas]);
+  }, [fichas, alumnas, busquedaFichas, filtroObjetivoFichas, filtroEstadoFichas]);
 
   const exportarTodasFichasExcel = () => {
     const filas = fichasFiltradas.map((f) => fichaAFila49(f));
@@ -2076,7 +2121,7 @@ export default function CRMApp() {
             { id: 'alumnas', label: '👥 Alumnas', count: alumnas.length },
             { id: 'vencimientos', label: '⏰ Vencimientos', badge: alertasVencimiento.filter((a) => a.estado === 'VENCE_HOY' || a.estado === 'VENCIDO').length },
             { id: 'recordatorios', label: '✉️ Recordatorios' },
-            { id: 'fichas', label: '📋 Fichas Alumnas', count: fichas.length },
+            { id: 'fichas', label: '📋 Fichas Alumnas', count: fichas.length, badge: fichasPendientesValidacion.length },
             { id: 'ingresos', label: '💵 Ingresos', count: ingresos.length },
             { id: 'egresos', label: '📉 Egresos', count: egresos.length },
             { id: 'dashboard', label: '📊 Métricas & P&L' },
@@ -2100,13 +2145,44 @@ export default function CRMApp() {
                 </span>
               )}
               {item.badge !== undefined && item.badge > 0 && (
-                <span className="rounded-full bg-red-500 px-1.5 py-0.2 text-[10px] font-bold text-white animate-bounce">
+                <span className="rounded-full bg-rose-500 px-1.5 py-0.2 text-[10px] font-bold text-white animate-pulse">
                   {item.badge}
                 </span>
               )}
             </button>
           ))}
         </div>
+
+        {/* Banner Alerta de Fichas Pendientes de Validación para Valentina y Admins */}
+        {fichasPendientesValidacion.length > 0 && (
+          <div className="rounded-2xl border border-emerald-300 bg-gradient-to-r from-emerald-50 via-teal-50 to-white p-3.5 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                <BellRing size={16} className="animate-bounce" />
+              </div>
+              <div>
+                <h4 className="text-xs font-black text-emerald-950">
+                  ¡Tienes {fichasPendientesValidacion.length} nueva(s) ficha(s) de alumna(s) lista(s) para validar!
+                </h4>
+                <p className="text-[11px] text-stone-600">
+                  {fichasPendientesValidacion.slice(0, 3).map((f) => f.nombre_completo).join(', ')}
+                  {fichasPendientesValidacion.length > 3 ? ` y ${fichasPendientesValidacion.length - 3} más` : ''} completaron su registro.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setFiltroEstadoFichas('pendientes');
+                setTab('fichas');
+              }}
+              className="flex items-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 px-3.5 py-1.5 text-xs font-bold text-white shadow-xs transition cursor-pointer shrink-0"
+            >
+              <span>Validar Alumnas Ahora</span>
+              <ArrowRight size={13} />
+            </button>
+          </div>
+        )}
 
         {/* ============================================================== */}
         {/* PESTAÑA: ALUMNAS                                               */}
@@ -2887,7 +2963,7 @@ export default function CRMApp() {
             </div>
 
             {/* Barra de Filtros Fichas */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 rounded-2xl border border-stone-200 bg-white p-3 shadow-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 rounded-2xl border border-stone-200 bg-white p-3 shadow-xs">
               <div className="relative">
                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
                 <input
@@ -2901,16 +2977,32 @@ export default function CRMApp() {
 
               <div>
                 <select
+                  value={filtroEstadoFichas}
+                  onChange={(e) => setFiltroEstadoFichas(e.target.value as 'todas' | 'pendientes' | 'en_padron')}
+                  className="w-full rounded-xl border border-stone-300 bg-white p-2 text-xs outline-none font-semibold text-stone-700"
+                >
+                  <option value="todas">Todas las fichas ({fichas.length})</option>
+                  <option value="pendientes">
+                    🔔 Pendientes de validar ({fichasPendientesValidacion.length})
+                  </option>
+                  <option value="en_padron">
+                    ✅ Ya incorporadas ({fichas.length - fichasPendientesValidacion.length})
+                  </option>
+                </select>
+              </div>
+
+              <div>
+                <select
                   value={filtroObjetivoFichas}
                   onChange={(e) => setFiltroObjetivoFichas(e.target.value)}
                   className="w-full rounded-xl border border-stone-300 bg-white p-2 text-xs outline-none font-semibold text-stone-700"
                 >
                   <option value="todos">Todos los objetivos principales</option>
                   <option value="Corporal: Bajar grasa y aumentar masa muscular">
-                    🏋️ Corporal: Bajar grasa y aumentar masa muscular
+                    🏋️ Corporal: Grasa y músculo
                   </option>
                   <option value="Mejorar tu salud de manera integral">
-                    🌿 Mejorar tu salud de manera integral
+                    🌿 Salud integral
                   </option>
                 </select>
               </div>
@@ -3004,14 +3096,27 @@ export default function CRMApp() {
                                 <Printer size={13} />
                               </button>
                               {!yaEnPadron ? (
-                                <button
-                                  onClick={() => pasarFichaAAlumna(f)}
-                                  className="rounded-lg bg-emerald-50 px-2 py-1 text-emerald-700 font-bold hover:bg-emerald-100 cursor-pointer"
-                                  title="Incorporar al padrón de alumnas del CRM"
-                                >
-                                  <UserCheck size={12} className="inline mr-1" />
-                                  + Alumna
-                                </button>
+                                <div className="inline-flex items-center gap-1">
+                                  <a
+                                    href={`https://wa.me/${f.telefono_whatsapp.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
+                                      `¡Hola ${f.nombre || f.nombre_completo}! 👋 Te saluda Valentina de TOTALHIIT. Recibí tu Ficha de Registro y quiero coordinar contigo los detalles para validar tu ingreso al grupo. 💪✨`
+                                    )}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="rounded-lg bg-emerald-50 p-1.5 text-emerald-700 hover:bg-emerald-100 cursor-pointer inline-flex items-center"
+                                    title="Escribir por WhatsApp a la Alumna"
+                                  >
+                                    <MessageCircle size={13} />
+                                  </a>
+                                  <button
+                                    onClick={() => pasarFichaAAlumna(f)}
+                                    className="rounded-lg bg-emerald-600 px-2 py-1 text-white font-bold hover:bg-emerald-700 cursor-pointer text-[11px] shadow-2xs inline-flex items-center"
+                                    title="Validar e incorporar al padrón de alumnas del CRM"
+                                  >
+                                    <UserCheck size={12} className="inline mr-1" />
+                                    Validar
+                                  </button>
+                                </div>
                               ) : (
                                 <span className="rounded-lg bg-stone-100 px-2 py-1 text-[10px] font-bold text-stone-500">
                                   ✓ En Padrón
@@ -5517,14 +5622,26 @@ export default function CRMApp() {
                 </button>
               </div>
 
-              <div className="flex gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <a
+                  href={`https://wa.me/${fichaModal.telefono_whatsapp.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
+                    `¡Hola ${fichaModal.nombre || fichaModal.nombre_completo}! 👋 Te saluda Valentina de TOTALHIIT. Recibí tu Ficha de Registro y quiero coordinar contigo los detalles para validar tu ingreso al grupo. 💪✨`
+                  )}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-bold text-white hover:bg-emerald-700 cursor-pointer shadow-xs"
+                >
+                  <MessageCircle size={14} />
+                  <span>Escribir por WhatsApp</span>
+                </a>
+
                 <button
                   type="button"
                   onClick={() => {
                     pasarFichaAAlumna(fichaModal);
                     setFichaModal(null);
                   }}
-                  className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-bold text-white hover:bg-emerald-700 cursor-pointer"
+                  className="flex items-center gap-1.5 rounded-xl bg-rose-600 px-3.5 py-2 text-xs font-bold text-white hover:bg-rose-700 cursor-pointer"
                 >
                   <UserCheck size={14} />
                   <span>+ Incorporar al Padrón de Alumnas</span>

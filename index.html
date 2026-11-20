@@ -1,6 +1,30 @@
 <!doctype html>
 <html lang="es">
   <head>
+    <!-- Google Tag Manager -->
+    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+    new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+    j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+    'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+    })(window,document,'script','dataLayer','GTM-5WS6GFRK');</script>
+    <!-- End Google Tag Manager -->
+    <!-- Detección de Plataforma PWA / Android / Web -->
+    <script>
+      (function() {
+        var isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+        var isAndroidApp = !!(window.Capacitor && window.Capacitor.getPlatform() === 'android');
+        var platform = 'Web_Browser';
+        if (isAndroidApp) {
+          platform = 'Android_App';
+        } else if (isStandalone) {
+          platform = /iPad|iPhone|iPod/.test(navigator.userAgent) ? 'PWA_iOS' : 'PWA_Standalone';
+        }
+        window.dataLayer = window.dataLayer || [];
+        window.dataLayer.push({
+          app_platform: platform
+        });
+      })();
+    </script>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -12,6 +36,10 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
   </head>
   <body class="bg-stone-50 text-stone-900 font-sans antialiased selection:bg-rose-200 selection:text-rose-900">
+    <!-- Google Tag Manager (noscript) -->
+    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-5WS6GFRK"
+    height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+    <!-- End Google Tag Manager (noscript) -->
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

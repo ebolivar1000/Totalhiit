@@ -49,8 +49,6 @@ import {
   saveCrmStateRemote,
   verifyCrmLoginRemote,
   changeCrmPasswordRemote,
-  mergeCrmStates,
-  hasLocalOnlyRecords,
   CrmStatePayload,
 } from './crmSync';
 
@@ -489,6 +487,7 @@ export default function CRMApp() {
   const skipNextCloudSaveRef = useRef(false);
   const cloudVersionRef = useRef<number>(0);
   const savingInFlightRef = useRef(false);
+  const pendingPayloadRef = useRef<CrmStatePayload | null>(null);
   const saveTimerRef = useRef<number | null>(null);
 
   const getCurrentPayload = (): CrmStatePayload => ({
@@ -514,45 +513,43 @@ export default function CRMApp() {
     setFichas(payload.fichas);
     setLogsAuditoria(payload.logsAuditoria);
     setPlantillaMsg(payload.plantillaMsg);
-    setTimeout(() => setIsApplyingRemote(false), 50);
+    setTimeout(() => setIsApplyingRemote(false), 100);
   };
 
   const pushToCloud = async (payloadToSave: CrmStatePayload) => {
-    if (!autenticado || savingInFlightRef.current) return;
+    if (!autenticado) return;
+
+    // Si ya hay una operación de guardado en curso, encolar el payload más reciente
+    if (savingInFlightRef.current) {
+      pendingPayloadRef.current = payloadToSave;
+      return;
+    }
+
     savingInFlightRef.current = true;
     setSyncStatus('syncing');
     setSyncErrorMsg('');
 
     try {
-      let attemptPayload = payloadToSave;
-      let baseVer = cloudVersionRef.current;
+      let currentPayload: CrmStatePayload | null = payloadToSave;
 
-      for (let attempt = 0; attempt < 3; attempt++) {
-        const res = await saveCrmStateRemote(adminEmail, adminClave, baseVer, attemptPayload);
+      while (currentPayload) {
+        pendingPayloadRef.current = null;
+        const res = await saveCrmStateRemote(adminEmail, adminClave, currentPayload);
+
         if (res.ok && typeof res.version === 'number') {
           cloudVersionRef.current = res.version;
           setRemoteVersion(res.version);
           setSyncStatus('synced');
           setLastSyncTime(new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
-          return;
+        } else {
+          setSyncStatus('error');
+          setSyncErrorMsg(res.error || 'Error al guardar en la nube');
         }
 
-        if (res.conflict && res.currentState) {
-          // Otro admin guardó justo antes: fusionar sin perder transacciones y reintentar
-          const merged = mergeCrmStates(attemptPayload, res.currentState);
-          applyPayloadToState(merged);
-          attemptPayload = merged;
-          baseVer = res.currentState.version;
-          continue;
-        }
-
-        setSyncStatus('error');
-        setSyncErrorMsg(res.error || 'Error al guardar en la nube');
-        return;
+        // Si mientras guardábamos se encoló otro cambio (ej. agregaron o borraron otro registro),
+        // procesarlo inmediatamente en el siguiente ciclo sin perderlo jamás
+        currentPayload = pendingPayloadRef.current;
       }
-
-      setSyncStatus('error');
-      setSyncErrorMsg('Conflicto de concurrencia. Haz clic en Sincronizar.');
     } catch {
       setSyncStatus('error');
       setSyncErrorMsg('Sin conexión al servidor de Cloudflare.');
@@ -562,7 +559,10 @@ export default function CRMApp() {
   };
 
   const syncFromCloud = async (isInitial = false) => {
-    if (!autenticado || savingInFlightRef.current) return;
+    if (!autenticado) return;
+    // Jamás sobreescribir si hay un guardado en curso o encolado localmente
+    if (savingInFlightRef.current || pendingPayloadRef.current) return;
+
     if (isInitial) {
       setSyncStatus('syncing');
       setSyncErrorMsg('');
@@ -585,24 +585,14 @@ export default function CRMApp() {
       const localSnapshot = latestPayloadRef.current;
 
       if (!res.state) {
-        // Nube vacía (primera inicialización): subir los datos locales (ej. los +100 registros de esta PC)
+        // Nube vacía (primera inicialización histórica): subir los datos locales
         cloudVersionRef.current = 0;
         cloudReadyRef.current = true;
         await pushToCloud(localSnapshot);
         return;
       }
 
-      // Si esta PC tiene registros locales que aún no están en la nube (migración desde localStorage), fusionarlos y subir
-      if (isInitial && hasLocalOnlyRecords(localSnapshot, res.state)) {
-        const merged = mergeCrmStates(localSnapshot, res.state);
-        applyPayloadToState(merged);
-        cloudVersionRef.current = res.version;
-        cloudReadyRef.current = true;
-        await pushToCloud(merged);
-        return;
-      }
-
-      // Adoptar estado de la nube
+      // La base de datos en la nube es la ÚNICA FUENTE DE LA VERDAD
       applyPayloadToState(res.state);
       cloudVersionRef.current = res.version;
       cloudReadyRef.current = true;
@@ -2039,7 +2029,13 @@ export default function CRMApp() {
 
             {/* Indicador de Sincronización en la Nube */}
             <button
-              onClick={() => syncFromCloud(false)}
+              onClick={() => {
+                if (syncStatus === 'error') {
+                  pushToCloud(latestPayloadRef.current);
+                } else {
+                  syncFromCloud(false);
+                }
+              }}
               disabled={syncStatus === 'syncing'}
               title={syncErrorMsg || (lastSyncTime ? `Última sincronización: ${lastSyncTime} (v${remoteVersion})` : 'Sincronizar con la nube')}
               className={`flex items-center gap-1.5 rounded-xl border px-2.5 py-1.5 text-xs font-bold transition cursor-pointer ${
@@ -4759,6 +4755,15 @@ export default function CRMApp() {
                 }
 
                 setIngresos((prev) => [...nuevos, ...prev]);
+                nuevos.forEach((n) => {
+                  registrarLogAuditoria(
+                    'INGRESOS',
+                    'EDICION_INGRESO',
+                    `Nuevo ingreso registrado: ${n.concepto} (${n.moneda_original} ${n.monto_original})`,
+                    '0',
+                    `${n.moneda_original} ${n.monto_original}`
+                  );
+                });
                 setModalIngreso(false);
               }}
               className="space-y-3"
@@ -5045,6 +5050,13 @@ export default function CRMApp() {
                   metodo_pago: 'Tarjeta',
                 };
                 setEgresos((prev) => [nuevo, ...prev]);
+                registrarLogAuditoria(
+                  'EGRESOS',
+                  'EDICION_EGRESO',
+                  `Nuevo egreso registrado: ${nuevo.concepto} (${nuevo.moneda_original} ${nuevo.monto_original})`,
+                  '0',
+                  `${nuevo.moneda_original} ${nuevo.monto_original}`
+                );
                 setModalEgreso(false);
               }}
               className="space-y-3"

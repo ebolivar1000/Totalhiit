@@ -7,9 +7,11 @@ import React, { useState, useEffect } from 'react';
 import {
   AlertCircle,
   ArrowLeft,
+  Check,
   CheckCircle2,
   ChevronDown,
   ChevronRight,
+  Copy,
   FileSpreadsheet,
   FileText,
   Heart,
@@ -39,10 +41,10 @@ export const ADMIN_EMAIL_PRINCIPAL = 'totalhiit1@gmail.com';
 export const ADMIN_EMAILS_CC = 'ebolivar1000@gmail.com,caribialabs@gmail.com';
 
 /**
- * Genera el enlace de WhatsApp con mensaje personalizado para notificar a Valentina (+54 11 5418 8296)
+ * Genera el texto del mensaje para notificar a Valentina (+54 11 5418 8296)
  */
-export const generarEnlaceWhatsAppAviso = (ficha: FichaRegistro): string => {
-  const mensaje = `¡Hola Valentina! 👋 Acabo de completar mi Ficha de Registro Oficial en TOTALHIIT.
+export const generarTextoMensajeWhatsApp = (ficha: FichaRegistro): string => {
+  return `¡Hola Valentina! 👋 Acabo de completar mi Ficha de Registro Oficial en TOTALHIIT.
 
 📋 *Mis Datos de Registro:*
 • *Alumna:* ${ficha.nombre_completo}
@@ -54,8 +56,13 @@ export const generarEnlaceWhatsAppAviso = (ficha: FichaRegistro): string => {
 • *Alergias / Lesiones:* ${ficha.alergias} | ${ficha.lesiones_desde_cuando || ficha.problemas_musculares_oseos}
 
 ¡Quedo a la espera de tu validación para coordinar e iniciar las clases! 💪✨`;
+};
 
-  return `https://wa.me/${VALENTINA_WHATSAPP}?text=${encodeURIComponent(mensaje)}`;
+/**
+ * Genera el enlace de WhatsApp con mensaje personalizado para notificar a Valentina (+54 11 5418 8296)
+ */
+export const generarEnlaceWhatsAppAviso = (ficha: FichaRegistro): string => {
+  return `https://wa.me/${VALENTINA_WHATSAPP}?text=${encodeURIComponent(generarTextoMensajeWhatsApp(ficha))}`;
 };
 
 /**
@@ -172,6 +179,7 @@ export default function FormularioRegistro({ onVolverAdmin, esAdmin }: Props) {
   // UI state
   const [seccionAbierta, setSeccionAbierta] = useState<number>(1);
   const [mensajeGuardado, setMensajeGuardado] = useState(false);
+  const [mensajeCopiado, setMensajeCopiado] = useState(false);
   const [errorValidacion, setErrorValidacion] = useState('');
 
   // Cargar si ya finalizó previamente en este dispositivo
@@ -408,6 +416,27 @@ export default function FormularioRegistro({ onVolverAdmin, esAdmin }: Props) {
     } catch {}
 
     // 2. Enviar notificación por Email automática a los administradores vía FormSubmit
+    const payloadEmail = {
+      _captcha: 'false',
+      _template: 'table',
+      _subject: `🚨 NUEVA ALUMNA REGISTRADA EN TOTALHIIT: ${nuevaFicha.nombre_completo}`,
+      _cc: ADMIN_EMAILS_CC,
+      _replyto: nuevaFicha.email || 'totalhiit1@gmail.com',
+      alumna: nuevaFicha.nombre_completo,
+      telefono_whatsapp: nuevaFicha.telefono_whatsapp,
+      email: nuevaFicha.email,
+      edad: nuevaFicha.edad,
+      ubicacion: nuevaFicha.localidad_pais,
+      objetivo_principal: nuevaFicha.objetivo_principal,
+      altura_peso: `${nuevaFicha.altura} | ${nuevaFicha.peso} (Talla ${nuevaFicha.talla_remera})`,
+      alergias: nuevaFicha.alergias,
+      problemas_o_lesiones: nuevaFicha.lesiones_desde_cuando || nuevaFicha.problemas_musculares_oseos,
+      medicamentos: nuevaFicha.medicamentos_detalle || nuevaFicha.toma_medicamentos,
+      contacto_emergencia: nuevaFicha.contacto_emergencia,
+      fecha_registro: nuevaFicha.fecha_registro,
+      enlace_crm: 'https://totalhiit.pages.dev/crm',
+    };
+
     try {
       fetch('https://formsubmit.co/ajax/totalhiit1@gmail.com', {
         method: 'POST',
@@ -417,32 +446,34 @@ export default function FormularioRegistro({ onVolverAdmin, esAdmin }: Props) {
           Origin: window.location.origin,
           Referer: window.location.href,
         },
-        body: JSON.stringify({
-          _subject: `🚨 NUEVA ALUMNA REGISTRADA EN TOTALHIIT: ${nuevaFicha.nombre_completo}`,
-          _cc: ADMIN_EMAILS_CC,
-          _replyto: nuevaFicha.email,
-          alumna: nuevaFicha.nombre_completo,
-          telefono_whatsapp: nuevaFicha.telefono_whatsapp,
-          email: nuevaFicha.email,
-          edad: nuevaFicha.edad,
-          ubicacion: nuevaFicha.localidad_pais,
-          objetivo_principal: nuevaFicha.objetivo_principal,
-          altura_peso: `${nuevaFicha.altura} | ${nuevaFicha.peso} (Talla ${nuevaFicha.talla_remera})`,
-          alergias: nuevaFicha.alergias,
-          problemas_o_lesiones: nuevaFicha.lesiones_desde_cuando || nuevaFicha.problemas_musculares_oseos,
-          medicamentos: nuevaFicha.medicamentos_detalle || nuevaFicha.toma_medicamentos,
-          contacto_emergencia: nuevaFicha.contacto_emergencia,
-          fecha_registro: nuevaFicha.fecha_registro,
-          enlace_crm: 'https://totalhiit.pages.dev/crm',
-        }),
+        body: JSON.stringify(payloadEmail),
+      }).catch(() => {});
+
+      fetch('https://formsubmit.co/ajax/ebolivar1000@gmail.com', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+          Origin: window.location.origin,
+          Referer: window.location.href,
+        },
+        body: JSON.stringify(payloadEmail),
       }).catch(() => {});
     } catch {}
 
-    // 3. Intentar abrir WhatsApp directo a Valentina en una nueva pestaña
-    try {
-      const waUrl = generarEnlaceWhatsAppAviso(nuevaFicha);
-      window.open(waUrl, '_blank');
-    } catch {}
+    // 3. Abrir WhatsApp DIRECTO a Valentina:
+    const waUrl = generarEnlaceWhatsAppAviso(nuevaFicha);
+    const esDispositivoMovil = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+    if (esDispositivoMovil) {
+      // En móvil, la navegación directa a wa.me abre la app nativa de WhatsApp
+      // sin ser bloqueada por los bloqueadores de ventanas emergentes (pop-ups)
+      window.location.href = waUrl;
+    } else {
+      try {
+        window.open(waUrl, '_blank');
+      } catch {}
+    }
 
     // Bloquear formulario y mostrar vista de confirmación
     setFichaFinalizada(nuevaFicha);
@@ -562,13 +593,13 @@ export default function FormularioRegistro({ onVolverAdmin, esAdmin }: Props) {
               </div>
               <div className="space-y-1">
                 <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 px-2.5 py-0.5 text-[11px] font-black uppercase tracking-wider">
-                  <span>🔔 Paso Final: Aviso para Validación</span>
+                  <span>🔔 Paso Final Obligatorio</span>
                 </div>
                 <h3 className="text-base sm:text-lg font-black text-stone-900 leading-tight">
-                  Avisa a Valentina (+54 11 5418-8296) para Validar tu Ingreso
+                  Envía el aviso por WhatsApp a Valentina (+54 11 5418-8296) para Validar tu Ingreso
                 </h3>
                 <p className="text-xs text-stone-600 leading-relaxed">
-                  Para que Valentina confirme la recepción de tus datos, prepare tu plan personalizado y te dé la bienvenida oficial al grupo, por favor envíale el aviso de finalización:
+                  Para que Valentina confirme la recepción de tus datos, prepare tu plan personalizado y te dé la bienvenida oficial al grupo, envíale el mensaje listo por WhatsApp con un solo toque:
                 </p>
               </div>
             </div>
@@ -581,8 +612,22 @@ export default function FormularioRegistro({ onVolverAdmin, esAdmin }: Props) {
                 className="flex-1 flex items-center justify-center gap-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] py-4 px-5 font-black text-white text-sm shadow-md transition cursor-pointer text-center"
               >
                 <MessageCircle size={22} className="shrink-0" />
-                <span>📱 Avisar a Valentina por WhatsApp (+54 11 5418-8296)</span>
+                <span>📱 Abrir WhatsApp y Enviar Aviso (+54 11 5418-8296)</span>
               </a>
+
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(generarTextoMensajeWhatsApp(fichaFinalizada));
+                  setMensajeCopiado(true);
+                  setTimeout(() => setMensajeCopiado(false), 3000);
+                }}
+                className="flex items-center justify-center gap-2 rounded-2xl border border-stone-300 bg-white hover:bg-stone-50 py-3.5 px-4 font-bold text-stone-700 text-xs shadow-xs transition text-center cursor-pointer"
+                title="Copiar texto del mensaje para pegarlo en WhatsApp manualmente"
+              >
+                {mensajeCopiado ? <Check size={16} className="text-emerald-600" /> : <Copy size={16} className="text-stone-600" />}
+                <span>{mensajeCopiado ? '¡Copiado!' : '📋 Copiar Mensaje'}</span>
+              </button>
 
               <a
                 href={generarEnlaceEmailAviso(fichaFinalizada)}

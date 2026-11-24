@@ -87,7 +87,28 @@ export const onRequestPost = async (ctx: Ctx): Promise<Response> => {
   const objetivo = String(ficha.objetivo_principal || 'No especificado').trim();
   const ubicacion = String(ficha.localidad_pais || 'No especificada').trim();
 
-  // Enviar en background
+  const emailBody = {
+    _captcha: 'false',
+    _template: 'table',
+    _subject: `🚨 NUEVA ALUMNA REGISTRADA EN TOTALHIIT: ${nombreAlumna}`,
+    _cc: 'ebolivar1000@gmail.com,caribialabs@gmail.com',
+    _replyto: emailAlumna || 'totalhiit1@gmail.com',
+    alumna: nombreAlumna,
+    whatsapp: telAlumna,
+    email: emailAlumna,
+    edad: ficha.edad,
+    ubicacion,
+    objetivo,
+    altura_peso: `${ficha.altura} | ${ficha.peso} (Talla ${ficha.talla_remera})`,
+    alergias: ficha.alergias,
+    lesiones_patologias: ficha.lesiones_desde_cuando || ficha.problemas_musculares_oseos,
+    medicamentos: ficha.medicamentos_detalle || ficha.toma_medicamentos,
+    contacto_emergencia: ficha.contacto_emergencia,
+    fecha_registro: ficha.fecha_registro,
+    link_crm: 'https://totalhiit.pages.dev/crm',
+  };
+
+  // Enviar a totalhiit1@gmail.com y ebolivar1000@gmail.com como respaldo directo
   try {
     fetch('https://formsubmit.co/ajax/totalhiit1@gmail.com', {
       method: 'POST',
@@ -97,24 +118,18 @@ export const onRequestPost = async (ctx: Ctx): Promise<Response> => {
         Origin: 'https://totalhiit.pages.dev',
         Referer: 'https://totalhiit.pages.dev/crm/registro/',
       },
-      body: JSON.stringify({
-        _subject: `🚨 NUEVA ALUMNA REGISTRADA EN TOTALHIIT: ${nombreAlumna}`,
-        _cc: 'ebolivar1000@gmail.com,caribialabs@gmail.com',
-        _replyto: emailAlumna,
-        alumna: nombreAlumna,
-        whatsapp: telAlumna,
-        email: emailAlumna,
-        edad: ficha.edad,
-        ubicacion,
-        objetivo,
-        altura_peso: `${ficha.altura} | ${ficha.peso} (Talla ${ficha.talla_remera})`,
-        alergias: ficha.alergias,
-        lesiones_patologias: ficha.lesiones_desde_cuando || ficha.problemas_musculares_oseos,
-        medicamentos: ficha.medicamentos_detalle || ficha.toma_medicamentos,
-        contacto_emergencia: ficha.contacto_emergencia,
-        fecha_registro: ficha.fecha_registro,
-        link_crm: 'https://totalhiit.pages.dev/crm',
-      }),
+      body: JSON.stringify(emailBody),
+    }).catch(() => {});
+
+    fetch('https://formsubmit.co/ajax/ebolivar1000@gmail.com', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        Origin: 'https://totalhiit.pages.dev',
+        Referer: 'https://totalhiit.pages.dev/crm/registro/',
+      },
+      body: JSON.stringify(emailBody),
     }).catch(() => {});
   } catch {}
 

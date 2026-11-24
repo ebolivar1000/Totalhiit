@@ -181,31 +181,31 @@ export const onRequestPost = async (ctx: Ctx): Promise<Response> => {
     return json({ ok: false, error: 'Estructura de datos del CRM inválida.' }, 400);
   }
 
-  const baseVersion = typeof reqObj.baseVersion === 'number' ? reqObj.baseVersion : null;
   const current = (await ctx.env.SITE_CONTENT.get(CRM_STATE_KEY, 'json')) as StoredCrmState | null;
   const currentVersion = current?.version ?? 0;
-
-  if (baseVersion !== null && baseVersion !== currentVersion) {
-    return json(
-      {
-        ok: false,
-        conflict: true,
-        version: currentVersion,
-        currentState: current,
-        error: 'Otro administrador actualizó los datos mientras editabas.',
-      },
-      409
-    );
-  }
-
   const nextVersion = currentVersion + 1;
   const updatedAt = new Date().toISOString();
+
+  // Preservar cualquier ficha entrante registrada por alumnas que no esté aún en el payload del admin
+  const incoming =
+    ((await ctx.env.SITE_CONTENT.get('incoming_fichas_v1', 'json')) as Array<Record<string, unknown>>) || [];
+  let finalFichas = reqObj.state.fichas as Array<Record<string, unknown>>;
+  if (incoming.length > 0) {
+    const existingIds = new Set(
+      finalFichas.map((f) => (f && typeof f === 'object' ? (f as Record<string, unknown>).id : null))
+    );
+    const nuevas = incoming.filter((f) => f && typeof f === 'object' && !existingIds.has(f.id));
+    if (nuevas.length > 0) {
+      finalFichas = [...nuevas, ...finalFichas];
+    }
+  }
+
   const nextState: StoredCrmState = {
     paises: reqObj.state.paises,
     alumnas: reqObj.state.alumnas,
     ingresos: reqObj.state.ingresos,
     egresos: reqObj.state.egresos,
-    fichas: reqObj.state.fichas,
+    fichas: finalFichas,
     logsAuditoria: reqObj.state.logsAuditoria,
     plantillaMsg: reqObj.state.plantillaMsg,
     version: nextVersion,

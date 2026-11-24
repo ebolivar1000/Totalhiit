@@ -297,7 +297,6 @@ export default function CRMApp() {
   const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'synced' | 'error'>('idle');
   const [syncErrorMsg, setSyncErrorMsg] = useState<string>('');
   const [lastSyncTime, setLastSyncTime] = useState<string>('');
-  const [isApplyingRemote, setIsApplyingRemote] = useState<boolean>(false);
 
   // Navegación
   const [tab, setTab] = useState<
@@ -322,7 +321,7 @@ export default function CRMApp() {
     if (raw) {
       try {
         const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length >= ALUMNAS_INICIALES.length) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       } catch {}
     }
     return ALUMNAS_INICIALES;
@@ -334,7 +333,7 @@ export default function CRMApp() {
     if (raw) {
       try {
         const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length >= INGRESOS_INICIALES.length) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       } catch {}
     }
     return INGRESOS_INICIALES;
@@ -483,14 +482,15 @@ export default function CRMApp() {
   }, [plantillaMsg]);
 
   // ============================================================================
-  // SINCRONIZACIÓN EN LA NUBE (CLOUDFLARE WORKERS KV) - SIN PÉRDIDA DE DATOS
+  // SINCRONIZACIÓN EN LA NUBE (CLOUDFLARE WORKERS KV) - PERSISTENCIA ROBUSTA
   // ============================================================================
   const cloudReadyRef = useRef(false);
-  const skipNextCloudSaveRef = useRef(false);
   const cloudVersionRef = useRef<number>(0);
   const savingInFlightRef = useRef(false);
   const pendingPayloadRef = useRef<CrmStatePayload | null>(null);
   const saveTimerRef = useRef<number | null>(null);
+  const lastMutationTimeRef = useRef<number>(0);
+  const isRemoteApplyingRef = useRef<boolean>(false);
 
   const getCurrentPayload = (): CrmStatePayload => ({
     paises,
@@ -506,8 +506,7 @@ export default function CRMApp() {
   latestPayloadRef.current = getCurrentPayload();
 
   const applyPayloadToState = (payload: CrmStatePayload) => {
-    skipNextCloudSaveRef.current = true;
-    setIsApplyingRemote(true);
+    isRemoteApplyingRef.current = true;
     setPaises(payload.paises);
     setAlumnas(payload.alumnas);
     setIngresos(payload.ingresos);
@@ -515,11 +514,15 @@ export default function CRMApp() {
     setFichas(payload.fichas);
     setLogsAuditoria(payload.logsAuditoria);
     setPlantillaMsg(payload.plantillaMsg);
-    setTimeout(() => setIsApplyingRemote(false), 100);
+    latestPayloadRef.current = payload;
+    setTimeout(() => {
+      isRemoteApplyingRef.current = false;
+    }, 150);
   };
 
   const pushToCloud = async (payloadToSave: CrmStatePayload) => {
     if (!autenticado) return;
+    lastMutationTimeRef.current = Date.now();
 
     // Si ya hay una operación de guardado en curso, encolar el payload más reciente
     if (savingInFlightRef.current) {
@@ -548,8 +551,7 @@ export default function CRMApp() {
           setSyncErrorMsg(res.error || 'Error al guardar en la nube');
         }
 
-        // Si mientras guardábamos se encoló otro cambio (ej. agregaron o borraron otro registro),
-        // procesarlo inmediatamente en el siguiente ciclo sin perderlo jamás
+        // Si mientras guardábamos se encoló otro cambio, procesarlo de inmediato
         currentPayload = pendingPayloadRef.current;
       }
     } catch {
@@ -560,10 +562,28 @@ export default function CRMApp() {
     }
   };
 
+  // Función para persistir de inmediato ante acciones explícitas (altas, bajas, ediciones)
+  const persistirCambioInmediato = (nuevoPayload: CrmStatePayload) => {
+    lastMutationTimeRef.current = Date.now();
+    if (saveTimerRef.current) {
+      window.clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
+    latestPayloadRef.current = nuevoPayload;
+    pushToCloud(nuevoPayload);
+  };
+
   const syncFromCloud = async (isInitial = false) => {
     if (!autenticado) return;
-    // Jamás sobreescribir si hay un guardado en curso o encolado localmente
-    if (savingInFlightRef.current || pendingPayloadRef.current) return;
+
+    // Jamás sobreescribir si hay un guardado en curso, encolado, o si el usuario hizo un cambio reciente (< 4 seg)
+    if (
+      savingInFlightRef.current ||
+      pendingPayloadRef.current ||
+      Date.now() - lastMutationTimeRef.current < 4000
+    ) {
+      return;
+    }
 
     if (isInitial) {
       setSyncStatus('syncing');
@@ -594,7 +614,18 @@ export default function CRMApp() {
         return;
       }
 
-      // La base de datos en la nube es la ÚNICA FUENTE DE LA VERDAD
+      // Si la versión devuelta por la nube NO es estrictamente mayor que la que tenemos localmente,
+      // no sobreescribir el estado local para proteger eliminaciones o ediciones locales.
+      if (!isInitial && typeof res.version === 'number' && res.version <= cloudVersionRef.current) {
+        setSyncStatus('synced');
+        return;
+      }
+
+      // Si el usuario acaba de interactuar localmente, proteger sus cambios
+      if (Date.now() - lastMutationTimeRef.current < 4000) {
+        return;
+      }
+
       applyPayloadToState(res.state);
       cloudVersionRef.current = res.version;
       cloudReadyRef.current = true;
@@ -623,7 +654,10 @@ export default function CRMApp() {
     }, 15000);
 
     const handleFocus = () => {
-      syncFromCloud(false);
+      // Solo consultar en focus si no hubo una acción local reciente
+      if (Date.now() - lastMutationTimeRef.current >= 4000) {
+        syncFromCloud(false);
+      }
     };
     window.addEventListener('focus', handleFocus);
 
@@ -633,21 +667,19 @@ export default function CRMApp() {
     };
   }, [autenticado, adminEmail, adminClave]);
 
-  // Guardado automático inmediato en la nube ante cualquier cambio local
+  // Guardado automático debounced ante cualquier cambio local en formulario o inputs
   useEffect(() => {
-    if (!autenticado || !cloudReadyRef.current || isApplyingRemote) return;
-    if (skipNextCloudSaveRef.current) {
-      skipNextCloudSaveRef.current = false;
-      return;
-    }
+    if (!autenticado || !cloudReadyRef.current || isRemoteApplyingRef.current) return;
 
     if (saveTimerRef.current) {
       window.clearTimeout(saveTimerRef.current);
     }
 
     saveTimerRef.current = window.setTimeout(() => {
-      pushToCloud(latestPayloadRef.current);
-    }, 350);
+      if (!isRemoteApplyingRef.current) {
+        pushToCloud(latestPayloadRef.current);
+      }
+    }, 400);
 
     return () => {
       if (saveTimerRef.current) {
@@ -655,27 +687,6 @@ export default function CRMApp() {
       }
     };
   }, [paises, alumnas, ingresos, egresos, fichas, logsAuditoria, plantillaMsg]);
-
-  // Función Auditoría
-  const registrarLogAuditoria = (
-    modulo: 'INGRESOS' | 'EGRESOS' | 'ALUMNAS',
-    tipo_accion: RegistroAuditoria['tipo_accion'],
-    detalle: string,
-    monto_previo?: string,
-    monto_nuevo?: string
-  ) => {
-    const nuevoLog: RegistroAuditoria = {
-      id: `log-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-      fecha_hora: new Date().toLocaleString('es-ES'),
-      admin_email: adminEmail,
-      modulo,
-      tipo_accion,
-      detalle,
-      monto_previo,
-      monto_nuevo,
-    };
-    setLogsAuditoria((prev) => [nuevoLog, ...prev]);
-  };
 
 
   // Mapa de Países
@@ -1099,14 +1110,26 @@ export default function CRMApp() {
         `¿Seguro que deseas eliminar el ingreso de ${ing.concepto} (${ing.moneda_original} ${ing.monto_original})? Esta acción quedará registrada en Auditoría.`
       )
     ) {
-      setIngresos((prev) => prev.filter((x) => x.id !== ing.id));
-      registrarLogAuditoria(
-        'INGRESOS',
-        'ELIMINACION_INGRESO',
-        `Eliminación del ingreso #${ing.id}: ${ing.concepto} (${ing.moneda_original} ${ing.monto_original})`,
-        `${ing.moneda_original} ${ing.monto_original}`,
-        '0'
-      );
+      const nuevoLog: RegistroAuditoria = {
+        id: `log-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        fecha_hora: new Date().toLocaleString('es-ES'),
+        admin_email: adminEmail,
+        modulo: 'INGRESOS',
+        tipo_accion: 'ELIMINACION_INGRESO',
+        detalle: `Eliminación del ingreso #${ing.id}: ${ing.concepto} (${ing.moneda_original} ${ing.monto_original})`,
+        monto_previo: `${ing.moneda_original} ${ing.monto_original}`,
+        monto_nuevo: '0',
+      };
+      const nuevosIngresos = ingresos.filter((x) => x.id !== ing.id);
+      const nuevosLogs = [nuevoLog, ...logsAuditoria];
+
+      setIngresos(nuevosIngresos);
+      setLogsAuditoria(nuevosLogs);
+      persistirCambioInmediato({
+        ...getCurrentPayload(),
+        ingresos: nuevosIngresos,
+        logsAuditoria: nuevosLogs,
+      });
     }
   };
 
@@ -1143,14 +1166,26 @@ export default function CRMApp() {
         `¿Seguro que deseas eliminar el egreso ${egr.concepto} (${egr.moneda_original} ${egr.monto_original})? Esta acción quedará registrada en Auditoría.`
       )
     ) {
-      setEgresos((prev) => prev.filter((x) => x.id !== egr.id));
-      registrarLogAuditoria(
-        'EGRESOS',
-        'ELIMINACION_EGRESO',
-        `Eliminación del egreso #${egr.id}: ${egr.concepto} (${egr.moneda_original} ${egr.monto_original})`,
-        `${egr.moneda_original} ${egr.monto_original}`,
-        '0'
-      );
+      const nuevoLog: RegistroAuditoria = {
+        id: `log-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        fecha_hora: new Date().toLocaleString('es-ES'),
+        admin_email: adminEmail,
+        modulo: 'EGRESOS',
+        tipo_accion: 'ELIMINACION_EGRESO',
+        detalle: `Eliminación del egreso #${egr.id}: ${egr.concepto} (${egr.moneda_original} ${egr.monto_original})`,
+        monto_previo: `${egr.moneda_original} ${egr.monto_original}`,
+        monto_nuevo: '0',
+      };
+      const nuevosEgresos = egresos.filter((x) => x.id !== egr.id);
+      const nuevosLogs = [nuevoLog, ...logsAuditoria];
+
+      setEgresos(nuevosEgresos);
+      setLogsAuditoria(nuevosLogs);
+      persistirCambioInmediato({
+        ...getCurrentPayload(),
+        egresos: nuevosEgresos,
+        logsAuditoria: nuevosLogs,
+      });
     }
   };
 
@@ -2597,9 +2632,14 @@ export default function CRMApp() {
                             <button
                               onClick={() => {
                                 const nuevoEstado = a.activa === 1 ? 0 : 1;
-                                setAlumnas((prev) =>
-                                  prev.map((x) => (x.codigo === a.codigo ? { ...x, activa: nuevoEstado } : x))
+                                const nuevasAlumnas = alumnas.map((x) =>
+                                  x.codigo === a.codigo ? { ...x, activa: nuevoEstado } : x
                                 );
+                                setAlumnas(nuevasAlumnas);
+                                persistirCambioInmediato({
+                                  ...getCurrentPayload(),
+                                  alumnas: nuevasAlumnas,
+                                });
                               }}
                               className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold cursor-pointer transition ${
                                 a.activa === 1
@@ -2635,14 +2675,26 @@ export default function CRMApp() {
                             <button
                               onClick={() => {
                                 if (window.confirm(`¿Seguro que deseas eliminar a ${a.nombre_completo}? Esta acción quedará registrada en Auditoría.`)) {
-                                  setAlumnas((prev) => prev.filter((x) => x.codigo !== a.codigo));
-                                  registrarLogAuditoria(
-                                    'ALUMNAS',
-                                    'CAMBIO_CUOTA_ALUMNA',
-                                    `Eliminación del padrón de la alumna ${a.nombre_completo} (${a.codigo})`,
-                                    `${a.moneda_preferida} ${a.cuota_mensual}`,
-                                    '0 (Alumna eliminada)'
-                                  );
+                                  const nuevoLog: RegistroAuditoria = {
+                                    id: `log-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+                                    fecha_hora: new Date().toLocaleString('es-ES'),
+                                    admin_email: adminEmail,
+                                    modulo: 'ALUMNAS',
+                                    tipo_accion: 'CAMBIO_CUOTA_ALUMNA',
+                                    detalle: `Eliminación del padrón de la alumna ${a.nombre_completo} (${a.codigo})`,
+                                    monto_previo: `${a.moneda_preferida} ${a.cuota_mensual}`,
+                                    monto_nuevo: '0 (Alumna eliminada)',
+                                  };
+                                  const nuevasAlumnas = alumnas.filter((x) => x.codigo !== a.codigo);
+                                  const nuevosLogs = [nuevoLog, ...logsAuditoria];
+
+                                  setAlumnas(nuevasAlumnas);
+                                  setLogsAuditoria(nuevosLogs);
+                                  persistirCambioInmediato({
+                                    ...getCurrentPayload(),
+                                    alumnas: nuevasAlumnas,
+                                    logsAuditoria: nuevosLogs,
+                                  });
                                 }
                               }}
                               className="rounded-lg bg-red-50 p-1.5 text-red-600 hover:bg-red-100 cursor-pointer"
@@ -4382,7 +4434,12 @@ export default function CRMApp() {
                                 return;
                               }
                               if (window.confirm(`¿Eliminar ${p.nombre}?`)) {
-                                setPaises((prev) => prev.filter((x) => x.id !== p.id));
+                                const nuevosPaises = paises.filter((x) => x.id !== p.id);
+                                setPaises(nuevosPaises);
+                                persistirCambioInmediato({
+                                  ...getCurrentPayload(),
+                                  paises: nuevosPaises,
+                                });
                               }
                             }}
                             className="rounded-lg bg-red-50 p-1.5 text-red-600 hover:bg-red-100"
@@ -4503,18 +4560,28 @@ export default function CRMApp() {
                   activa: Number(formActiva),
                   notas: formNotas.trim() || undefined,
                 };
+                let nuevosLogs = logsAuditoria;
                 if (alumnaEdit && (alumnaEdit.cuota_mensual !== nueva.cuota_mensual || alumnaEdit.moneda_preferida !== nueva.moneda_preferida)) {
-                  registrarLogAuditoria(
-                    'ALUMNAS',
-                    'CAMBIO_CUOTA_ALUMNA',
-                    `Modificación de cuota mensual para ${nueva.nombre_completo} (${nueva.codigo})`,
-                    `${alumnaEdit.moneda_preferida} ${alumnaEdit.cuota_mensual}`,
-                    `${nueva.moneda_preferida} ${nueva.cuota_mensual}`
-                  );
+                  const nuevoLog: RegistroAuditoria = {
+                    id: `log-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+                    fecha_hora: new Date().toLocaleString('es-ES'),
+                    admin_email: adminEmail,
+                    modulo: 'ALUMNAS',
+                    tipo_accion: 'CAMBIO_CUOTA_ALUMNA',
+                    detalle: `Modificación de cuota mensual para ${nueva.nombre_completo} (${nueva.codigo})`,
+                    monto_previo: `${alumnaEdit.moneda_preferida} ${alumnaEdit.cuota_mensual}`,
+                    monto_nuevo: `${nueva.moneda_preferida} ${nueva.cuota_mensual}`,
+                  };
+                  nuevosLogs = [nuevoLog, ...logsAuditoria];
+                  setLogsAuditoria(nuevosLogs);
                 }
-                setAlumnas((prev) => {
-                  const sinActual = prev.filter((x) => x.codigo !== nueva.codigo);
-                  return [...sinActual, nueva].sort((a, b) => a.codigo.localeCompare(b.codigo));
+                const sinActual = alumnas.filter((x) => x.codigo !== nueva.codigo);
+                const nuevasAlumnas = [...sinActual, nueva].sort((a, b) => a.codigo.localeCompare(b.codigo));
+                setAlumnas(nuevasAlumnas);
+                persistirCambioInmediato({
+                  ...getCurrentPayload(),
+                  alumnas: nuevasAlumnas,
+                  logsAuditoria: nuevosLogs,
                 });
                 setModalAlumna(false);
               }}
@@ -4691,9 +4758,12 @@ export default function CRMApp() {
                   tasa_a_usd: Number(formPaisTasaUsd) || 1.0,
                   tasa_a_ars: Number(formPaisTasaArs) || 1449.58,
                 };
-                setPaises((prev) => {
-                  const sinActual = prev.filter((x) => x.id !== nuevo.id);
-                  return [...sinActual, nuevo].sort((a, b) => a.nombre.localeCompare(b.nombre));
+                const sinActual = paises.filter((x) => x.id !== nuevo.id);
+                const nuevosPaises = [...sinActual, nuevo].sort((a, b) => a.nombre.localeCompare(b.nombre));
+                setPaises(nuevosPaises);
+                persistirCambioInmediato({
+                  ...getCurrentPayload(),
+                  paises: nuevosPaises,
                 });
                 setModalPais(false);
               }}
@@ -4957,14 +5027,25 @@ export default function CRMApp() {
                     mes_pagado_label: labelMes,
                     metodo_pago: ingMetodo,
                   };
-                  setIngresos((prev) => prev.map((x) => (x.id === ingresoEdit.id ? itemActualizado : x)));
-                  registrarLogAuditoria(
-                    'INGRESOS',
-                    'EDICION_INGRESO',
-                    `Edición del ingreso #${ingresoEdit.id}: ${ingConcepto}`,
-                    `${ingresoEdit.moneda_original} ${ingresoEdit.monto_original}`,
-                    `${ingMoneda} ${montoMes}`
-                  );
+                  const nuevosIngresos = ingresos.map((x) => (x.id === ingresoEdit.id ? itemActualizado : x));
+                  const nuevoLog: RegistroAuditoria = {
+                    id: `log-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+                    fecha_hora: new Date().toLocaleString('es-ES'),
+                    admin_email: adminEmail,
+                    modulo: 'INGRESOS',
+                    tipo_accion: 'EDICION_INGRESO',
+                    detalle: `Edición del ingreso #${ingresoEdit.id}: ${ingConcepto}`,
+                    monto_previo: `${ingresoEdit.moneda_original} ${ingresoEdit.monto_original}`,
+                    monto_nuevo: `${ingMoneda} ${montoMes}`,
+                  };
+                  const nuevosLogs = [nuevoLog, ...logsAuditoria];
+                  setIngresos(nuevosIngresos);
+                  setLogsAuditoria(nuevosLogs);
+                  persistirCambioInmediato({
+                    ...getCurrentPayload(),
+                    ingresos: nuevosIngresos,
+                    logsAuditoria: nuevosLogs,
+                  });
                   setModalIngreso(false);
                   return;
                 }
@@ -5008,15 +5089,27 @@ export default function CRMApp() {
                   });
                 }
 
-                setIngresos((prev) => [...nuevos, ...prev]);
-                nuevos.forEach((n) => {
-                  registrarLogAuditoria(
-                    'INGRESOS',
-                    'EDICION_INGRESO',
-                    `Nuevo ingreso registrado: ${n.concepto} (${n.moneda_original} ${n.monto_original})`,
-                    '0',
-                    `${n.moneda_original} ${n.monto_original}`
-                  );
+                const nuevosIngresos = [...nuevos, ...ingresos];
+                const nuevosLogsAud: RegistroAuditoria[] = [
+                  ...nuevos.map((n) => ({
+                    id: `log-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+                    fecha_hora: new Date().toLocaleString('es-ES'),
+                    admin_email: adminEmail,
+                    modulo: 'INGRESOS' as const,
+                    tipo_accion: 'EDICION_INGRESO' as const,
+                    detalle: `Nuevo ingreso registrado: ${n.concepto} (${n.moneda_original} ${n.monto_original})`,
+                    monto_previo: '0',
+                    monto_nuevo: `${n.moneda_original} ${n.monto_original}`,
+                  })),
+                  ...logsAuditoria,
+                ];
+
+                setIngresos(nuevosIngresos);
+                setLogsAuditoria(nuevosLogsAud);
+                persistirCambioInmediato({
+                  ...getCurrentPayload(),
+                  ingresos: nuevosIngresos,
+                  logsAuditoria: nuevosLogsAud,
                 });
                 setModalIngreso(false);
               }}
@@ -5275,14 +5368,25 @@ export default function CRMApp() {
                     mes_periodo: Number(egrFecha.split('-')[1]) || 6,
                     anio_periodo: Number(egrFecha.split('-')[0]) || 2026,
                   };
-                  setEgresos((prev) => prev.map((x) => (x.id === egresoEdit.id ? itemActualizado : x)));
-                  registrarLogAuditoria(
-                    'EGRESOS',
-                    'EDICION_EGRESO',
-                    `Edición de egreso #${egresoEdit.id}: ${egrConcepto}`,
-                    `${egresoEdit.moneda_original} ${egresoEdit.monto_original}`,
-                    `${egrMoneda} ${monto}`
-                  );
+                  const nuevosEgresos = egresos.map((x) => (x.id === egresoEdit.id ? itemActualizado : x));
+                  const nuevoLog: RegistroAuditoria = {
+                    id: `log-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+                    fecha_hora: new Date().toLocaleString('es-ES'),
+                    admin_email: adminEmail,
+                    modulo: 'EGRESOS',
+                    tipo_accion: 'EDICION_EGRESO',
+                    detalle: `Edición de egreso #${egresoEdit.id}: ${egrConcepto}`,
+                    monto_previo: `${egresoEdit.moneda_original} ${egresoEdit.monto_original}`,
+                    monto_nuevo: `${egrMoneda} ${monto}`,
+                  };
+                  const nuevosLogs = [nuevoLog, ...logsAuditoria];
+                  setEgresos(nuevosEgresos);
+                  setLogsAuditoria(nuevosLogs);
+                  persistirCambioInmediato({
+                    ...getCurrentPayload(),
+                    egresos: nuevosEgresos,
+                    logsAuditoria: nuevosLogs,
+                  });
                   setModalEgreso(false);
                   return;
                 }
@@ -5303,14 +5407,25 @@ export default function CRMApp() {
                   anio_periodo: Number(egrFecha.split('-')[0]) || 2026,
                   metodo_pago: 'Tarjeta',
                 };
-                setEgresos((prev) => [nuevo, ...prev]);
-                registrarLogAuditoria(
-                  'EGRESOS',
-                  'EDICION_EGRESO',
-                  `Nuevo egreso registrado: ${nuevo.concepto} (${nuevo.moneda_original} ${nuevo.monto_original})`,
-                  '0',
-                  `${nuevo.moneda_original} ${nuevo.monto_original}`
-                );
+                const nuevosEgresos = [nuevo, ...egresos];
+                const nuevoLog: RegistroAuditoria = {
+                  id: `log-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+                  fecha_hora: new Date().toLocaleString('es-ES'),
+                  admin_email: adminEmail,
+                  modulo: 'EGRESOS',
+                  tipo_accion: 'EDICION_EGRESO',
+                  detalle: `Nuevo egreso registrado: ${nuevo.concepto} (${nuevo.moneda_original} ${nuevo.monto_original})`,
+                  monto_previo: '0',
+                  monto_nuevo: `${nuevo.moneda_original} ${nuevo.monto_original}`,
+                };
+                const nuevosLogs = [nuevoLog, ...logsAuditoria];
+                setEgresos(nuevosEgresos);
+                setLogsAuditoria(nuevosLogs);
+                persistirCambioInmediato({
+                  ...getCurrentPayload(),
+                  egresos: nuevosEgresos,
+                  logsAuditoria: nuevosLogs,
+                });
                 setModalEgreso(false);
               }}
               className="space-y-3"

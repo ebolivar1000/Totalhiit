@@ -106,11 +106,13 @@ export const onRequestGet = async (ctx: Ctx): Promise<Response> => {
   }
 
   // Fusionar fichas entrantes que no estén aún en el estado persistido
+  let nuevasIncomingCount = 0;
   if (incoming.length > 0 && Array.isArray(stored.fichas)) {
     const ids = new Set(
       stored.fichas.map((f) => (f && typeof f === 'object' ? (f as Record<string, unknown>).id : null))
     );
     const nuevas = incoming.filter((f) => f && typeof f === 'object' && !ids.has(f.id));
+    nuevasIncomingCount = nuevas.length;
     if (nuevas.length > 0) {
       stored.fichas = [...nuevas, ...stored.fichas];
     }
@@ -119,7 +121,7 @@ export const onRequestGet = async (ctx: Ctx): Promise<Response> => {
   const url = new URL(ctx.request.url);
   const sinceRaw = url.searchParams.get('sinceVersion');
   const sinceVersion = sinceRaw !== null ? Number(sinceRaw) : NaN;
-  if (Number.isFinite(sinceVersion) && sinceVersion === stored.version && incoming.length === 0) {
+  if (Number.isFinite(sinceVersion) && sinceVersion === stored.version && nuevasIncomingCount === 0) {
     return json({
       ok: true,
       unchanged: true,
@@ -214,6 +216,13 @@ export const onRequestPost = async (ctx: Ctx): Promise<Response> => {
   };
 
   await ctx.env.SITE_CONTENT.put(CRM_STATE_KEY, JSON.stringify(nextState));
+
+  // Limpiar fichas entrantes ya consolidadas en el estado principal para no acumularlas indefinidamente
+  if (incoming.length > 0) {
+    try {
+      await ctx.env.SITE_CONTENT.put('incoming_fichas_v1', JSON.stringify([]));
+    } catch {}
+  }
 
   return json({
     ok: true,

@@ -8,6 +8,8 @@ import {
   Calendar,
   CheckCircle2,
   CheckSquare,
+  ChevronDown,
+  ChevronUp,
   ClipboardList,
   Cloud,
   CloudOff,
@@ -787,6 +789,108 @@ export default function CRMApp() {
   const [dashFiltroCatEgreso, setDashFiltroCatEgreso] = useState<string>('todas');
 
   // ==============================================================================
+  // ORDENAMIENTO DINÁMICO EN TABLAS (Ascendente / Descendente por Columna)
+  // ==============================================================================
+
+  // 1. Alumnas
+  const [sortColAlumnas, setSortColAlumnas] = useState<string>('codigo');
+  const [sortDirAlumnas, setSortDirAlumnas] = useState<'asc' | 'desc'>('asc');
+  const handleSortAlumnas = (col: string) => {
+    if (sortColAlumnas === col) {
+      setSortDirAlumnas((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortColAlumnas(col);
+      setSortDirAlumnas('asc');
+    }
+  };
+
+  // 2. Recordatorios
+  const [sortColRecordatorios, setSortColRecordatorios] = useState<string>('diaCobro');
+  const [sortDirRecordatorios, setSortDirRecordatorios] = useState<'asc' | 'desc'>('asc');
+  const handleSortRecordatorios = (col: string) => {
+    if (sortColRecordatorios === col) {
+      setSortDirRecordatorios((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortColRecordatorios(col);
+      setSortDirRecordatorios('asc');
+    }
+  };
+
+  // 3. Ficha de Alumnas
+  const [sortColFichas, setSortColFichas] = useState<string>('fecha');
+  const [sortDirFichas, setSortDirFichas] = useState<'asc' | 'desc'>('desc');
+  const handleSortFichas = (col: string) => {
+    if (sortColFichas === col) {
+      setSortDirFichas((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortColFichas(col);
+      setSortDirFichas('asc');
+    }
+  };
+
+  // 4. Ingresos
+  const [sortColIngresos, setSortColIngresos] = useState<string>('fecha');
+  const [sortDirIngresos, setSortDirIngresos] = useState<'asc' | 'desc'>('desc');
+  const handleSortIngresos = (col: string) => {
+    if (sortColIngresos === col) {
+      setSortDirIngresos((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortColIngresos(col);
+      setSortDirIngresos('asc');
+    }
+  };
+
+  // 5. Egresos
+  const [sortColEgresos, setSortColEgresos] = useState<string>('fecha');
+  const [sortDirEgresos, setSortDirEgresos] = useState<'asc' | 'desc'>('desc');
+  const handleSortEgresos = (col: string) => {
+    if (sortColEgresos === col) {
+      setSortDirEgresos((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortColEgresos(col);
+      setSortDirEgresos('asc');
+    }
+  };
+
+  const renderSortTh = (
+    label: string,
+    colKey: string,
+    currentCol: string,
+    currentDir: 'asc' | 'desc',
+    onSort: (col: string) => void,
+    align: 'left' | 'center' | 'right' = 'left',
+    extraClasses = ''
+  ) => {
+    const isSorted = currentCol === colKey;
+    return (
+      <th
+        onClick={() => onSort(colKey)}
+        className={`py-3 px-3.5 select-none cursor-pointer transition hover:bg-stone-100 hover:text-stone-900 group ${
+          align === 'right' ? 'text-right' : align === 'center' ? 'text-center' : 'text-left'
+        } ${isSorted ? 'bg-rose-50/70 text-rose-700' : ''} ${extraClasses}`}
+        title={`Ordenar por ${label} (${isSorted && currentDir === 'asc' ? 'Descendente' : 'Ascendente'})`}
+      >
+        <div
+          className={`inline-flex items-center gap-1 ${
+            align === 'right' ? 'justify-end' : align === 'center' ? 'justify-center' : 'justify-start'
+          }`}
+        >
+          <span>{label}</span>
+          {isSorted ? (
+            currentDir === 'asc' ? (
+              <ChevronUp size={14} className="text-rose-600 shrink-0" />
+            ) : (
+              <ChevronDown size={14} className="text-rose-600 shrink-0" />
+            )
+          ) : (
+            <ArrowUpDown size={12} className="text-stone-300 opacity-0 group-hover:opacity-100 transition shrink-0" />
+          )}
+        </div>
+      </th>
+    );
+  };
+
+  // ==============================================================================
   // MODALES
   // ==============================================================================
 
@@ -1054,9 +1158,9 @@ export default function CRMApp() {
   // CÁLCULOS Y MEMOS
   // ==============================================================================
 
-  // Alumnas Filtradas
+  // Alumnas Filtradas y Ordenadas Dinámicamente
   const alumnasFiltradas = useMemo(() => {
-    return alumnas.filter((a) => {
+    const filtradas = alumnas.filter((a) => {
       const q = busquedaAlumnas.toLowerCase();
       const coincide =
         a.nombre_completo.toLowerCase().includes(q) ||
@@ -1073,7 +1177,42 @@ export default function CRMApp() {
 
       return coincide && coincPais && coincMon && coincEst;
     });
-  }, [alumnas, busquedaAlumnas, filtroPaisAlumnas, filtroMonedaAlumnas, filtroEstadoAlumnas]);
+
+    const dir = sortDirAlumnas === 'asc' ? 1 : -1;
+    return filtradas.sort((a, b) => {
+      if (sortColAlumnas === 'codigo') {
+        return dir * a.codigo.localeCompare(b.codigo, undefined, { numeric: true });
+      }
+      if (sortColAlumnas === 'nombre') {
+        return dir * a.nombre_completo.localeCompare(b.nombre_completo, 'es', { sensitivity: 'base' });
+      }
+      if (sortColAlumnas === 'email') {
+        return dir * (a.email || '').localeCompare(b.email || '', 'es', { sensitivity: 'base' });
+      }
+      if (sortColAlumnas === 'pais') {
+        const pa = mapaPaises.get(a.pais_id)?.nombre || '';
+        const pb = mapaPaises.get(b.pais_id)?.nombre || '';
+        return dir * pa.localeCompare(pb, 'es', { sensitivity: 'base' });
+      }
+      if (sortColAlumnas === 'cuota') {
+        const ca = a.cuota_mensual || 0;
+        const cb = b.cuota_mensual || 0;
+        return dir * (ca - cb);
+      }
+      if (sortColAlumnas === 'dia') {
+        const da = a.dia_de_pago || 1;
+        const db = b.dia_de_pago || 1;
+        return dir * (da - db);
+      }
+      if (sortColAlumnas === 'contacto') {
+        return dir * (a.telefono_whatsapp || '').localeCompare(b.telefono_whatsapp || '');
+      }
+      if (sortColAlumnas === 'estado') {
+        return dir * ((a.activa ?? 1) - (b.activa ?? 1));
+      }
+      return 0;
+    });
+  }, [alumnas, busquedaAlumnas, filtroPaisAlumnas, filtroMonedaAlumnas, filtroEstadoAlumnas, sortColAlumnas, sortDirAlumnas, mapaPaises]);
 
   // Alertas de Vencimiento y Ordenamiento
   const alertasVencimiento = useMemo(() => {
@@ -1153,9 +1292,9 @@ export default function CRMApp() {
     });
   }, [alumnas, mapaPaises, busquedaVenc, filtroEstadoVenc, ordenVenc]);
 
-  // Lista para Recordatorios Masivos
+  // Lista para Recordatorios Masivos (Filtrada y Ordenada Dinámicamente)
   const alumnasParaRecordatorios = useMemo(() => {
-    return alertasVencimiento.filter((item) => {
+    const filtradas = alertasVencimiento.filter((item) => {
       if (item.alumna.activa !== 1) return false;
       if (filtroLoteVenc === 'vencidas') return item.estado === 'VENCIDO';
       if (filtroLoteVenc === 'vence_hoy') return item.estado === 'VENCE_HOY';
@@ -1163,7 +1302,36 @@ export default function CRMApp() {
       if (filtroLoteVenc === 'dia_especifico') return item.diaCobro === Number(diaFiltroLote);
       return true;
     });
-  }, [alertasVencimiento, filtroLoteVenc, diaFiltroLote]);
+
+    const dir = sortDirRecordatorios === 'asc' ? 1 : -1;
+    return filtradas.sort((a, b) => {
+      if (sortColRecordatorios === 'codigo') {
+        return dir * a.alumna.codigo.localeCompare(b.alumna.codigo, undefined, { numeric: true });
+      }
+      if (sortColRecordatorios === 'nombre') {
+        return dir * a.alumna.nombre_completo.localeCompare(b.alumna.nombre_completo, 'es', { sensitivity: 'base' });
+      }
+      if (sortColRecordatorios === 'pais') {
+        return dir * (a.pais?.nombre || '').localeCompare(b.pais?.nombre || '', 'es', { sensitivity: 'base' });
+      }
+      if (sortColRecordatorios === 'diaCobro') {
+        return dir * (a.diaCobro - b.diaCobro);
+      }
+      if (sortColRecordatorios === 'cuota') {
+        return dir * ((a.montoEst || 0) - (b.montoEst || 0));
+      }
+      if (sortColRecordatorios === 'estadoVencimiento') {
+        const p = { VENCE_HOY: 0, VENCIDO: 1, PROXIMO: 2, AL_DIA: 3 };
+        return dir * (p[a.estado] - p[b.estado]);
+      }
+      if (sortColRecordatorios === 'estadoEnvio') {
+        const ea = enviadosSesion.has(a.alumna.codigo) ? 1 : 0;
+        const eb = enviadosSesion.has(b.alumna.codigo) ? 1 : 0;
+        return dir * (ea - eb);
+      }
+      return 0;
+    });
+  }, [alertasVencimiento, filtroLoteVenc, diaFiltroLote, sortColRecordatorios, sortDirRecordatorios, enviadosSesion]);
 
   // Inicializar selección masiva cuando cambia el filtro
   useEffect(() => {
@@ -1174,7 +1342,7 @@ export default function CRMApp() {
 
   // Ingresos Filtrados
   const ingresosFiltrados = useMemo(() => {
-    return ingresos.filter((i) => {
+    const filtrados = ingresos.filter((i) => {
       const cuotaLabel =
         i.mes_pagado_label?.trim() ||
         (i.mes_periodo ? `${NOMBRES_MESES[i.mes_periodo - 1]} ${i.anio_periodo}` : '');
@@ -1216,7 +1384,40 @@ export default function CRMApp() {
 
       return matchMes && matchMon && matchTipo && matchCodigo && matchAlumna && matchPais && matchBusqueda;
     });
-  }, [ingresos, filtroIngMes, filtroIngMoneda, filtroIngTipo, filtroIngCodigo, filtroIngAlumna, filtroIngPais, busquedaIngresos, alumnas]);
+
+    const dir = sortDirIngresos === 'asc' ? 1 : -1;
+    return filtrados.sort((a, b) => {
+      if (sortColIngresos === 'fecha') {
+        return dir * (a.fecha_pago || '').localeCompare(b.fecha_pago || '');
+      }
+      if (sortColIngresos === 'cuota_pagada') {
+        const ka = (a.anio_periodo || 2026) * 100 + (a.mes_periodo || 1);
+        const kb = (b.anio_periodo || 2026) * 100 + (b.mes_periodo || 1);
+        return dir * (ka - kb);
+      }
+      if (sortColIngresos === 'tipo') {
+        return dir * (a.tipo_ingreso || '').localeCompare(b.tipo_ingreso || '');
+      }
+      if (sortColIngresos === 'alumna_o_marca') {
+        const nomA = a.alumna_codigo ? (alumnas.find((x) => x.codigo === a.alumna_codigo)?.nombre_completo || a.alumna_codigo) : (a.cliente_o_marca || '');
+        const nomB = b.alumna_codigo ? (alumnas.find((x) => x.codigo === b.alumna_codigo)?.nombre_completo || b.alumna_codigo) : (b.cliente_o_marca || '');
+        return dir * nomA.localeCompare(nomB, 'es', { sensitivity: 'base' });
+      }
+      if (sortColIngresos === 'concepto') {
+        return dir * (a.concepto || '').localeCompare(b.concepto || '', 'es', { sensitivity: 'base' });
+      }
+      if (sortColIngresos === 'monto_original') {
+        return dir * ((a.monto_original || 0) - (b.monto_original || 0));
+      }
+      if (sortColIngresos === 'usd_equiv') {
+        return dir * ((a.usd_equivalente || 0) - (b.usd_equivalente || 0));
+      }
+      if (sortColIngresos === 'ars_equiv') {
+        return dir * ((a.ars_equivalente || 0) - (b.ars_equivalente || 0));
+      }
+      return 0;
+    });
+  }, [ingresos, filtroIngMes, filtroIngMoneda, filtroIngTipo, filtroIngCodigo, filtroIngAlumna, filtroIngPais, busquedaIngresos, alumnas, sortColIngresos, sortDirIngresos]);
 
   // Totales Ingresos Filtrados
   const totalesIngresosFiltrados = useMemo(() => {
@@ -1225,9 +1426,9 @@ export default function CRMApp() {
     return { usd, ars, cantidad: ingresosFiltrados.length };
   }, [ingresosFiltrados]);
 
-  // Egresos Filtrados
+  // Egresos Filtrados y Ordenados Dinámicamente
   const egresosFiltrados = useMemo(() => {
-    return egresos.filter((e) => {
+    const filtrados = egresos.filter((e) => {
       const mesStr = `${e.anio_periodo}-${String(e.mes_periodo).padStart(2, '0')}`;
       const matchMes = filtroEgrMes === 'todos' || mesStr === filtroEgrMes || e.fecha.startsWith(filtroEgrMes);
       const matchMon = filtroEgrMoneda === 'todas' || e.moneda_original === filtroEgrMoneda;
@@ -1240,7 +1441,30 @@ export default function CRMApp() {
 
       return matchMes && matchMon && matchCat && matchBusqueda;
     });
-  }, [egresos, filtroEgrMes, filtroEgrMoneda, filtroEgrCat, busquedaEgresos]);
+
+    const dir = sortDirEgresos === 'asc' ? 1 : -1;
+    return filtrados.sort((a, b) => {
+      if (sortColEgresos === 'fecha') {
+        return dir * (a.fecha || '').localeCompare(b.fecha || '');
+      }
+      if (sortColEgresos === 'categoria') {
+        return dir * (a.categoria || '').localeCompare(b.categoria || '');
+      }
+      if (sortColEgresos === 'concepto') {
+        return dir * (a.concepto || '').localeCompare(b.concepto || '', 'es', { sensitivity: 'base' });
+      }
+      if (sortColEgresos === 'proveedor') {
+        return dir * (a.proveedor || '').localeCompare(b.proveedor || '', 'es', { sensitivity: 'base' });
+      }
+      if (sortColEgresos === 'monto_original') {
+        return dir * ((a.monto_original || 0) - (b.monto_original || 0));
+      }
+      if (sortColEgresos === 'usd_equiv') {
+        return dir * ((a.usd_equivalente || 0) - (b.usd_equivalente || 0));
+      }
+      return 0;
+    });
+  }, [egresos, filtroEgrMes, filtroEgrMoneda, filtroEgrCat, busquedaEgresos, sortColEgresos, sortDirEgresos]);
 
   // Totales Egresos Filtrados
   const totalesEgresosFiltrados = useMemo(() => {
@@ -1627,7 +1851,7 @@ export default function CRMApp() {
 
   // Memos y Exportaciones de Fichas de Alumnas (Google Form Integrado)
   const fichasFiltradas = useMemo(() => {
-    return fichas.filter((f) => {
+    const filtradas = fichas.filter((f) => {
       const q = busquedaFichas.toLowerCase();
       const matchBusqueda =
         f.nombre_completo.toLowerCase().includes(q) ||
@@ -1648,7 +1872,37 @@ export default function CRMApp() {
 
       return matchBusqueda && matchObj;
     });
-  }, [fichas, alumnas, busquedaFichas, filtroObjetivoFichas, filtroEstadoFichas]);
+
+    const dir = sortDirFichas === 'asc' ? 1 : -1;
+    return filtradas.sort((a, b) => {
+      if (sortColFichas === 'fecha') {
+        const fa = a.marca_temporal || a.fecha_registro || '';
+        const fb = b.marca_temporal || b.fecha_registro || '';
+        return dir * fa.localeCompare(fb);
+      }
+      if (sortColFichas === 'alumna') {
+        return dir * a.nombre_completo.localeCompare(b.nombre_completo, 'es', { sensitivity: 'base' });
+      }
+      if (sortColFichas === 'contacto') {
+        return dir * ((a.telefono_whatsapp || '') + (a.email || '')).localeCompare((b.telefono_whatsapp || '') + (b.email || ''));
+      }
+      if (sortColFichas === 'ubicacion') {
+        return dir * (a.localidad_pais || '').localeCompare(b.localidad_pais || '', 'es', { sensitivity: 'base' });
+      }
+      if (sortColFichas === 'contextura') {
+        const ca = parseFloat(a.altura || '0') || 0;
+        const cb = parseFloat(b.altura || '0') || 0;
+        return dir * (ca - cb);
+      }
+      if (sortColFichas === 'alergias') {
+        return dir * (a.alergias || '').localeCompare(b.alergias || '', 'es', { sensitivity: 'base' });
+      }
+      if (sortColFichas === 'meta') {
+        return dir * (a.objetivo_principal || '').localeCompare(b.objetivo_principal || '', 'es', { sensitivity: 'base' });
+      }
+      return 0;
+    });
+  }, [fichas, alumnas, busquedaFichas, filtroObjetivoFichas, filtroEstadoFichas, sortColFichas, sortDirFichas]);
 
   const exportarTodasFichasExcel = () => {
     const filas = fichasFiltradas.map((f) => fichaAFila49(f));
@@ -2279,15 +2533,15 @@ export default function CRMApp() {
                 <table className="w-full text-left text-xs">
                   <thead className="border-b border-stone-200 bg-stone-50 font-bold text-stone-600">
                     <tr>
-                      <th className="py-3 px-3.5">Cód</th>
-                      <th className="py-3 px-3.5">Alumna</th>
-                      <th className="py-3 px-3.5">Correo</th>
-                      <th className="py-3 px-3.5">País</th>
-                      <th className="py-3 px-3.5">Cuota Pactada</th>
-                      <th className="py-3 px-3.5">Día Cobro</th>
-                      <th className="py-3 px-3.5">Contacto</th>
-                      <th className="py-3 px-3.5">Estado</th>
-                      <th className="py-3 px-3.5 text-right">Acciones</th>
+                      {renderSortTh('Cód', 'codigo', sortColAlumnas, sortDirAlumnas, handleSortAlumnas)}
+                      {renderSortTh('Alumna', 'nombre', sortColAlumnas, sortDirAlumnas, handleSortAlumnas)}
+                      {renderSortTh('Correo', 'email', sortColAlumnas, sortDirAlumnas, handleSortAlumnas)}
+                      {renderSortTh('País', 'pais', sortColAlumnas, sortDirAlumnas, handleSortAlumnas)}
+                      {renderSortTh('Cuota Pactada', 'cuota', sortColAlumnas, sortDirAlumnas, handleSortAlumnas)}
+                      {renderSortTh('Día Cobro', 'dia', sortColAlumnas, sortDirAlumnas, handleSortAlumnas)}
+                      {renderSortTh('Contacto', 'contacto', sortColAlumnas, sortDirAlumnas, handleSortAlumnas)}
+                      {renderSortTh('Estado', 'estado', sortColAlumnas, sortDirAlumnas, handleSortAlumnas)}
+                      <th className="py-3 px-3.5 text-right select-none">Acciones</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-stone-100">
@@ -2768,15 +3022,15 @@ export default function CRMApp() {
                 <table className="w-full text-left text-xs">
                   <thead className="border-b border-stone-200 bg-stone-50 font-bold text-stone-600">
                     <tr>
-                      <th className="py-3 px-3.5 w-10 text-center">Sel</th>
-                      <th className="py-3 px-3.5">Cód</th>
-                      <th className="py-3 px-3.5">Alumna</th>
-                      <th className="py-3 px-3.5">País</th>
-                      <th className="py-3 px-3.5">Día Cobro</th>
-                      <th className="py-3 px-3.5">Cuota</th>
-                      <th className="py-3 px-3.5">Estado Vencimiento</th>
-                      <th className="py-3 px-3.5">Estado Envío</th>
-                      <th className="py-3 px-3.5 text-right">Enviar</th>
+                      <th className="py-3 px-3.5 w-10 text-center select-none">Sel</th>
+                      {renderSortTh('Cód', 'codigo', sortColRecordatorios, sortDirRecordatorios, handleSortRecordatorios)}
+                      {renderSortTh('Alumna', 'nombre', sortColRecordatorios, sortDirRecordatorios, handleSortRecordatorios)}
+                      {renderSortTh('País', 'pais', sortColRecordatorios, sortDirRecordatorios, handleSortRecordatorios)}
+                      {renderSortTh('Día Cobro', 'diaCobro', sortColRecordatorios, sortDirRecordatorios, handleSortRecordatorios)}
+                      {renderSortTh('Cuota', 'cuota', sortColRecordatorios, sortDirRecordatorios, handleSortRecordatorios)}
+                      {renderSortTh('Estado Vencimiento', 'estadoVencimiento', sortColRecordatorios, sortDirRecordatorios, handleSortRecordatorios)}
+                      {renderSortTh('Estado Envío', 'estadoEnvio', sortColRecordatorios, sortDirRecordatorios, handleSortRecordatorios)}
+                      <th className="py-3 px-3.5 text-right select-none">Enviar</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-stone-100">
@@ -3010,14 +3264,14 @@ export default function CRMApp() {
                 <table className="w-full text-left text-xs">
                   <thead className="border-b border-stone-200 bg-stone-50 font-bold text-stone-600">
                     <tr>
-                      <th className="py-3 px-3.5">Fecha</th>
-                      <th className="py-3 px-3.5">Alumna</th>
-                      <th className="py-3 px-3.5">Contacto</th>
-                      <th className="py-3 px-3.5">Ubicación</th>
-                      <th className="py-3 px-3.5">Contextura</th>
-                      <th className="py-3 px-3.5">Alergias / Lesiones</th>
-                      <th className="py-3 px-3.5">Meta Principal</th>
-                      <th className="py-3 px-3.5 text-right">Acciones</th>
+                      {renderSortTh('Fecha', 'fecha', sortColFichas, sortDirFichas, handleSortFichas)}
+                      {renderSortTh('Alumna', 'alumna', sortColFichas, sortDirFichas, handleSortFichas)}
+                      {renderSortTh('Contacto', 'contacto', sortColFichas, sortDirFichas, handleSortFichas)}
+                      {renderSortTh('Ubicación', 'ubicacion', sortColFichas, sortDirFichas, handleSortFichas)}
+                      {renderSortTh('Contextura', 'contextura', sortColFichas, sortDirFichas, handleSortFichas)}
+                      {renderSortTh('Alergias / Lesiones', 'alergias', sortColFichas, sortDirFichas, handleSortFichas)}
+                      {renderSortTh('Meta Principal', 'meta', sortColFichas, sortDirFichas, handleSortFichas)}
+                      <th className="py-3 px-3.5 text-right select-none">Acciones</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-stone-100">
@@ -3317,15 +3571,15 @@ export default function CRMApp() {
                 <table className="w-full text-left text-xs">
                   <thead className="border-b border-stone-200 bg-stone-50 font-bold text-stone-600">
                     <tr>
-                      <th className="py-3 px-3.5">Fecha</th>
-                      <th className="py-3 px-3.5">Cuota Pagada</th>
-                      <th className="py-3 px-3.5">Tipo</th>
-                      <th className="py-3 px-3.5">Alumna / Marca</th>
-                      <th className="py-3 px-3.5">Concepto</th>
-                      <th className="py-3 px-3.5">Monto Original</th>
-                      <th className="py-3 px-3.5">USD Equiv.</th>
-                      <th className="py-3 px-3.5">ARS Equiv.</th>
-                      <th className="py-3 px-3.5 text-right">Acción</th>
+                      {renderSortTh('Fecha', 'fecha', sortColIngresos, sortDirIngresos, handleSortIngresos)}
+                      {renderSortTh('Cuota Pagada', 'cuota_pagada', sortColIngresos, sortDirIngresos, handleSortIngresos)}
+                      {renderSortTh('Tipo', 'tipo', sortColIngresos, sortDirIngresos, handleSortIngresos)}
+                      {renderSortTh('Alumna / Marca', 'alumna_o_marca', sortColIngresos, sortDirIngresos, handleSortIngresos)}
+                      {renderSortTh('Concepto', 'concepto', sortColIngresos, sortDirIngresos, handleSortIngresos)}
+                      {renderSortTh('Monto Original', 'monto_original', sortColIngresos, sortDirIngresos, handleSortIngresos)}
+                      {renderSortTh('USD Equiv.', 'usd_equiv', sortColIngresos, sortDirIngresos, handleSortIngresos)}
+                      {renderSortTh('ARS Equiv.', 'ars_equiv', sortColIngresos, sortDirIngresos, handleSortIngresos)}
+                      <th className="py-3 px-3.5 text-right select-none">Acción</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-stone-100">
@@ -3517,13 +3771,13 @@ export default function CRMApp() {
                 <table className="w-full text-left text-xs">
                   <thead className="border-b border-stone-200 bg-stone-50 font-bold text-stone-600">
                     <tr>
-                      <th className="py-3 px-3.5">Fecha</th>
-                      <th className="py-3 px-3.5">Categoría</th>
-                      <th className="py-3 px-3.5">Concepto</th>
-                      <th className="py-3 px-3.5">Proveedor</th>
-                      <th className="py-3 px-3.5">Monto Original</th>
-                      <th className="py-3 px-3.5">USD Equiv.</th>
-                      <th className="py-3 px-3.5 text-right">Acción</th>
+                      {renderSortTh('Fecha', 'fecha', sortColEgresos, sortDirEgresos, handleSortEgresos)}
+                      {renderSortTh('Categoría', 'categoria', sortColEgresos, sortDirEgresos, handleSortEgresos)}
+                      {renderSortTh('Concepto', 'concepto', sortColEgresos, sortDirEgresos, handleSortEgresos)}
+                      {renderSortTh('Proveedor', 'proveedor', sortColEgresos, sortDirEgresos, handleSortEgresos)}
+                      {renderSortTh('Monto Original', 'monto_original', sortColEgresos, sortDirEgresos, handleSortEgresos)}
+                      {renderSortTh('USD Equiv.', 'usd_equiv', sortColEgresos, sortDirEgresos, handleSortEgresos)}
+                      <th className="py-3 px-3.5 text-right select-none">Acción</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-stone-100">

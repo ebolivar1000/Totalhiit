@@ -1,0 +1,11 @@
+---
+description: Arquitectura Cloudflare Pages y Workers KV
+globs: *
+alwaysApply: true
+---
+
+# Reglas de Arquitectura — TOTALHIIT (Sitio Web & Admin)
+
+1. **SPA Estática con Edge Functions:** El frontend compila a `dist/`. El backend reside en `functions/api/`.
+2. **Workers KV:** La persistencia de textos y precios se realiza en el binding `SITE_CONTENT`.
+3. **Checkout Manual:** No integrar librerías de pasarelas de pago automáticas; el flujo es WhatsApp + Wise/CBU.

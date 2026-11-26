@@ -1,0 +1,13 @@
+---
+description: Protocolo multiagente compartido para Cursor y Antigravity
+globs: *
+alwaysApply: true
+---
+
+# Protocolo Multiagente de Inicio de Sesión en Cursor
+
+Antes de sugerir o modificar archivos en este proyecto:
+1. **Lee `docs/ai/HANDOFF.md`:** Revisa el estado del último agente y tareas pendientes.
+2. **Lee `AGENTS.md` y `docs/ai/PROJECT_CONTEXT.md`:** Conoce las reglas del checkout y la administración.
+3. **Consulta `docs/ai/ARCHITECTURE.md`:** No modifiques endpoints de `functions/api/` sin correr `npm run test:api`.
+4. **Al terminar:** Actualiza siempre `docs/ai/HANDOFF.md` y `docs/ai/TODO.md`.

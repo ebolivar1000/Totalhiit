@@ -1,15 +1,21 @@
-# Instrucciones para asistentes IA - Proyecto TOTALHIIT
+# Reglas Generales de Asistentes IA (Antigravity & Cursor) — TOTALHIIT (Sitio Web & Admin)
 
-- El proyecto se llama **TOTALHIIT**: plataforma de entrenamiento HIIT adaptado + nutrición para mujeres de más de 40 años (+40).
-- Responde en español.
-- Usa TypeScript cuando corresponda (Stack: React + Vite + Tailwind CSS + TypeScript).
-- Lee docs/progreso.md antes de empezar una tarea.
-- Lee ai/state.md para el estado actual del proyecto y ai/decisions.md para decisiones técnicas.
-- Lee docs/arquitectura.md solo si es necesario.
-- No revises todo el repositorio sin necesidad.
-- Modifica únicamente los archivos relacionados con la tarea.
-- Antes de instalar dependencias, solicita autorización.
-- Evita respuestas extensas y código duplicado.
-- Ejecuta solo pruebas relacionadas con los cambios.
-- Actualiza docs/progreso.md, ai/state.md y ai/decisions.md al terminar tareas importantes.
-- Nunca incluyas contraseñas ni secretos en archivos de contexto (datos bancarios van solo en el código).
+Este archivo rige a **todos los asistentes de Inteligencia Artificial** que abran este proyecto.
+
+---
+
+## 🚨 PROTOCOLO OBLIGATORIO DE ENTRADA
+1. **Verificar Git:** Ejecutar `git status`. Si hay cambios no guardados de otro agente, analizarlos antes de continuar.
+2. **Leer `docs/ai/HANDOFF.md`:** Identificar qué se hizo en la sesión anterior y cuál es el siguiente paso.
+3. **Consultar la Memoria:**
+   - `docs/ai/PROJECT_CONTEXT.md`: Reglas del negocio y checkout manual.
+   - `docs/ai/ARCHITECTURE.md`: SPA + Pages Functions + Workers KV.
+   - `docs/ai/DECISIONS.md`: Decisiones arquitectónicas inmutables.
+4. **Validación:** Tras cualquier cambio en `functions/api/`, ejecutar obligatoriamente `npm run test:api`.
+
+---
+
+## 🏁 PROTOCOLO OBLIGATORIO DE SALIDA
+Al culminar una tarea:
+1. Actualizar `docs/ai/CHANGELOG_AI.md` y `docs/ai/TODO.md`.
+2. Actualizar `docs/ai/HANDOFF.md` con los detalles de la sesión.

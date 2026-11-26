@@ -1,0 +1,11 @@
+---
+description: Reglas de Git y manejo de secretos
+globs: *
+alwaysApply: true
+---
+
+# Reglas de Git y Seguridad
+
+1. Comprueba `git status` antes de comenzar.
+2. Jamás guardes credenciales de Cloudflare o hashes de contraseñas en el código ni en la documentación.
+3. No commitees videos en formatos no optimizados (`*_raw.mp4`).

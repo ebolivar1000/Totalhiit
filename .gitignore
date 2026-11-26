@@ -161,3 +161,14 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Archivos multimedia crudos y pesados
+*_raw.mp4
+*.raw
+
+# Secretos y claves criptograficas
+*.pem
+*.jks
+*.keystore
+*.key
+

@@ -44,7 +44,7 @@ import {
   SnapshotCotizacion,
 } from './cotizaciones';
 import { exportarAExcel, exportarAPDF } from './exportador';
-import { FichaRegistro, FICHAS_INICIALES, COLUMNAS_49_GOOGLE_SHEETS, fichaAFila49 } from './tiposFicha';
+import { FichaRegistro, COLUMNAS_49_GOOGLE_SHEETS, fichaAFila49 } from './tiposFicha';
 import FormularioRegistro from './registro/FormularioRegistro';
 import {
   fetchCrmStateRemote,
@@ -101,6 +101,7 @@ export interface Ingreso {
   id: string;
   tipo_ingreso: 'CUOTA_ALUMNA' | 'CONTRATACION_APP' | 'COLABORACION_MARCA' | 'OTRO_INGRESO';
   alumna_codigo?: string;
+  alumna_nombre_snapshot?: string;
   cliente_o_marca?: string;
   concepto: string;
   fecha_pago: string;
@@ -168,65 +169,43 @@ const PAISES_INICIALES: Pais[] = [
   { id: 8, nombre: 'México', codigo_iso: 'MX', bandera: '🇲🇽', moneda_defecto: 'MXN', tasa_a_usd: 0.054, tasa_a_ars: 78.28 },
 ];
 
-const ALUMNAS_INICIALES: Alumna[] = [
-  { codigo: '0000', nombre_completo: 'Valentina Bolívar', pais_id: 2, moneda_preferida: 'ARS', cuota_mensual: 0, fecha_inicio: '2026-05-15', dia_de_pago: 1, activa: 1, email: 'totalhiit1@gmail.com', telefono_whatsapp: '+5491134567890' },
-  { codigo: '0001', nombre_completo: 'Raquel Hernandez', pais_id: 1, moneda_preferida: 'USD', cuota_mensual: 40, fecha_inicio: '2026-06-01', dia_de_pago: 1, activa: 1, email: 'raquel.hernandez@totalhiit.com', telefono_whatsapp: '+13055550101' },
-  { codigo: '0002', nombre_completo: 'Jackie Boriziuk', pais_id: 2, moneda_preferida: 'ARS', cuota_mensual: 40000, fecha_inicio: '2026-06-01', dia_de_pago: 1, activa: 1, email: 'jackie.boriziuk@totalhiit.com', telefono_whatsapp: '+5491155550102' },
-  { codigo: '0003', nombre_completo: 'Esther Guisado', pais_id: 3, moneda_preferida: 'EUR', cuota_mensual: 30, fecha_inicio: '2026-06-01', dia_de_pago: 1, activa: 1, email: 'esther.guisado@totalhiit.com', telefono_whatsapp: '+4915155550103' },
-  { codigo: '0004', nombre_completo: 'Magaly Jarquin', pais_id: 1, moneda_preferida: 'USD', cuota_mensual: 40, fecha_inicio: '2026-06-01', dia_de_pago: 1, activa: 1, email: 'magaly.jarquin@totalhiit.com', telefono_whatsapp: '+13055550104' },
-  { codigo: '0005', nombre_completo: 'Argelia belen Jarquin', pais_id: 1, moneda_preferida: 'USD', cuota_mensual: 40, fecha_inicio: '2026-06-01', dia_de_pago: 1, activa: 1, email: 'argelia.jarquin@totalhiit.com', telefono_whatsapp: '+13055550105' },
-  { codigo: '0006', nombre_completo: 'Paula Hoor', pais_id: 3, moneda_preferida: 'EUR', cuota_mensual: 30, fecha_inicio: '2026-06-17', dia_de_pago: 17, activa: 1, email: 'paula.hoor@totalhiit.com', telefono_whatsapp: '+4915155550106' },
-  { codigo: '0007', nombre_completo: 'Nataly Benitez', pais_id: 2, moneda_preferida: 'ARS', cuota_mensual: 40000, fecha_inicio: '2026-06-01', dia_de_pago: 1, activa: 1, email: 'nataly.benitez@totalhiit.com', telefono_whatsapp: '+5491155550107' },
-  { codigo: '0008', nombre_completo: 'Marlin Lopez', pais_id: 1, moneda_preferida: 'USD', cuota_mensual: 40, fecha_inicio: '2026-06-01', dia_de_pago: 1, activa: 1, email: 'marlin.lopez@totalhiit.com', telefono_whatsapp: '+13055550108' },
-  { codigo: '0009', nombre_completo: 'Margareth Banegas', pais_id: 1, moneda_preferida: 'USD', cuota_mensual: 40, fecha_inicio: '2026-06-01', dia_de_pago: 1, activa: 1, email: 'margareth.banegas@totalhiit.com', telefono_whatsapp: '+13055550109' },
-  { codigo: '0010', nombre_completo: 'Adilia Rodriguez', pais_id: 1, moneda_preferida: 'USD', cuota_mensual: 50, fecha_inicio: '2026-06-01', dia_de_pago: 1, activa: 1, email: 'adilia.rodriguez@totalhiit.com', telefono_whatsapp: '+12125550110' },
-  { codigo: '0011', nombre_completo: 'Eileen Garcia', pais_id: 1, moneda_preferida: 'USD', cuota_mensual: 37, fecha_inicio: '2026-06-01', dia_de_pago: 1, activa: 1, email: 'eileen.garcia@totalhiit.com', telefono_whatsapp: '+18135550111' },
-  { codigo: '0012', nombre_completo: 'Sonia Valeriano', pais_id: 1, moneda_preferida: 'USD', cuota_mensual: 50, fecha_inicio: '2026-06-01', dia_de_pago: 1, activa: 1, email: 'sonia.valeriano@totalhiit.com', telefono_whatsapp: '+14155550112' },
-  { codigo: '0013', nombre_completo: 'Yolanda Montijo', pais_id: 1, moneda_preferida: 'USD', cuota_mensual: 40, fecha_inicio: '2026-06-01', dia_de_pago: 1, activa: 1, email: 'yolanda.montijo@totalhiit.com', telefono_whatsapp: '+16025550113' },
-  { codigo: '0014', nombre_completo: 'Abygail Garcia', pais_id: 2, moneda_preferida: 'ARS', cuota_mensual: 40000, fecha_inicio: '2026-06-01', dia_de_pago: 1, activa: 1, email: 'abygail.garcia@totalhiit.com', telefono_whatsapp: '+5493415550114' },
-  { codigo: '0015', nombre_completo: 'Manuela Sarome', pais_id: 2, moneda_preferida: 'ARS', cuota_mensual: 42000, fecha_inicio: '2026-06-01', dia_de_pago: 1, activa: 1, email: 'manuela.sarome@totalhiit.com', telefono_whatsapp: '+5491155550115' },
-  { codigo: '0016', nombre_completo: 'Lousa Basili', pais_id: 3, moneda_preferida: 'EUR', cuota_mensual: 34, fecha_inicio: '2026-06-01', dia_de_pago: 1, activa: 1, email: 'lousa.basili@totalhiit.com', telefono_whatsapp: '+4916055550116' },
-  { codigo: '0017', nombre_completo: 'Monica Barber', pais_id: 1, moneda_preferida: 'USD', cuota_mensual: 30, fecha_inicio: '2026-06-01', dia_de_pago: 1, activa: 1, email: 'monica.barber@totalhiit.com', telefono_whatsapp: '+14045550117' },
-  { codigo: '0018', nombre_completo: 'Karla Kuusella', pais_id: 4, moneda_preferida: 'EUR', cuota_mensual: 36, fecha_inicio: '2026-06-01', dia_de_pago: 1, activa: 1, email: 'karla.kuusella@totalhiit.com', telefono_whatsapp: '+358405550118' },
-  { codigo: '0019', nombre_completo: 'Frania Lähdemäki', pais_id: 4, moneda_preferida: 'EUR', cuota_mensual: 36, fecha_inicio: '2026-06-01', dia_de_pago: 1, activa: 1, email: 'frania.lahdemaki@totalhiit.com', telefono_whatsapp: '+358505550119' },
-  { codigo: '0020', nombre_completo: 'Jessica Ledesma', pais_id: 1, moneda_preferida: 'USD', cuota_mensual: 40, fecha_inicio: '2026-06-01', dia_de_pago: 1, activa: 1, email: 'jessica.ledesma@totalhiit.com', telefono_whatsapp: '+12015550120' },
-  { codigo: '0021', nombre_completo: 'Mariela Decuzzi', pais_id: 2, moneda_preferida: 'ARS', cuota_mensual: 37000, fecha_inicio: '2026-06-01', dia_de_pago: 1, activa: 1, email: 'mariela.decuzzi@totalhiit.com', telefono_whatsapp: '+5492615550121' },
-  { codigo: '0022', nombre_completo: 'Susana Costa', pais_id: 2, moneda_preferida: 'ARS', cuota_mensual: 42000, fecha_inicio: '2026-06-01', dia_de_pago: 1, activa: 1, email: 'susana.costa@totalhiit.com', telefono_whatsapp: '+5491155550122' },
-];
+// English domain helpers for normalization, collision-free code generation, and registration matching
+const normalizeText = (value?: string): string =>
+  (value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
 
-const INGRESOS_INICIALES: Ingreso[] = [
-  { id: 'ing-1', tipo_ingreso: 'CUOTA_ALUMNA', alumna_codigo: '0001', concepto: 'Cuota Mensual TotalHIIT', fecha_pago: '2026-06-01', moneda_original: 'USD', monto_original: 40, tasa_a_usd: 1.0, tasa_a_ars: 1449.58, usd_equivalente: 40.0, ars_equivalente: 57983.2, mes_periodo: 6, anio_periodo: 2026, metodo_pago: 'Transferencia', estado: 'APROBADO' },
-  { id: 'ing-2', tipo_ingreso: 'CUOTA_ALUMNA', alumna_codigo: '0002', concepto: 'Cuota Mensual TotalHIIT', fecha_pago: '2026-06-01', moneda_original: 'ARS', monto_original: 40000, tasa_a_usd: 0.00069, tasa_a_ars: 1.0, usd_equivalente: 27.59, ars_equivalente: 40000.0, mes_periodo: 6, anio_periodo: 2026, metodo_pago: 'Transferencia', estado: 'APROBADO' },
-  { id: 'ing-3', tipo_ingreso: 'CUOTA_ALUMNA', alumna_codigo: '0003', concepto: 'Cuota Mensual TotalHIIT', fecha_pago: '2026-06-01', moneda_original: 'EUR', monto_original: 30, tasa_a_usd: 1.1468, tasa_a_ars: 1662.36, usd_equivalente: 34.4, ars_equivalente: 49870.8, mes_periodo: 6, anio_periodo: 2026, metodo_pago: 'Transferencia', estado: 'APROBADO' },
-  { id: 'ing-4', tipo_ingreso: 'CUOTA_ALUMNA', alumna_codigo: '0004', concepto: 'Cuota Mensual TotalHIIT', fecha_pago: '2026-06-01', moneda_original: 'USD', monto_original: 40, tasa_a_usd: 1.0, tasa_a_ars: 1449.58, usd_equivalente: 40.0, ars_equivalente: 57983.2, mes_periodo: 6, anio_periodo: 2026, metodo_pago: 'Transferencia', estado: 'APROBADO' },
-  { id: 'ing-5', tipo_ingreso: 'CUOTA_ALUMNA', alumna_codigo: '0005', concepto: 'Cuota Mensual TotalHIIT', fecha_pago: '2026-06-01', moneda_original: 'USD', monto_original: 40, tasa_a_usd: 1.0, tasa_a_ars: 1449.58, usd_equivalente: 40.0, ars_equivalente: 57983.2, mes_periodo: 6, anio_periodo: 2026, metodo_pago: 'Transferencia', estado: 'APROBADO' },
-  { id: 'ing-6', tipo_ingreso: 'CUOTA_ALUMNA', alumna_codigo: '0006', concepto: 'Cuota Mensual TotalHIIT', fecha_pago: '2026-06-17', moneda_original: 'EUR', monto_original: 30, tasa_a_usd: 1.1468, tasa_a_ars: 1662.36, usd_equivalente: 34.4, ars_equivalente: 49870.8, mes_periodo: 6, anio_periodo: 2026, metodo_pago: 'Transferencia', estado: 'APROBADO' },
-  { id: 'ing-7', tipo_ingreso: 'CUOTA_ALUMNA', alumna_codigo: '0007', concepto: 'Cuota Mensual TotalHIIT', fecha_pago: '2026-06-01', moneda_original: 'ARS', monto_original: 40000, tasa_a_usd: 0.00069, tasa_a_ars: 1.0, usd_equivalente: 27.59, ars_equivalente: 40000.0, mes_periodo: 6, anio_periodo: 2026, metodo_pago: 'Transferencia', estado: 'APROBADO' },
-  { id: 'ing-8', tipo_ingreso: 'CUOTA_ALUMNA', alumna_codigo: '0008', concepto: 'Cuota Mensual TotalHIIT', fecha_pago: '2026-06-01', moneda_original: 'USD', monto_original: 40, tasa_a_usd: 1.0, tasa_a_ars: 1449.58, usd_equivalente: 40.0, ars_equivalente: 57983.2, mes_periodo: 6, anio_periodo: 2026, metodo_pago: 'Transferencia', estado: 'APROBADO' },
-  { id: 'ing-9', tipo_ingreso: 'CUOTA_ALUMNA', alumna_codigo: '0009', concepto: 'Cuota Mensual TotalHIIT', fecha_pago: '2026-06-01', moneda_original: 'USD', monto_original: 40, tasa_a_usd: 1.0, tasa_a_ars: 1449.58, usd_equivalente: 40.0, ars_equivalente: 57983.2, mes_periodo: 6, anio_periodo: 2026, metodo_pago: 'Transferencia', estado: 'APROBADO' },
-  { id: 'ing-10', tipo_ingreso: 'CUOTA_ALUMNA', alumna_codigo: '0010', concepto: 'Cuota Mensual TotalHIIT', fecha_pago: '2026-06-01', moneda_original: 'USD', monto_original: 50, tasa_a_usd: 1.0, tasa_a_ars: 1449.58, usd_equivalente: 50.0, ars_equivalente: 72479.0, mes_periodo: 6, anio_periodo: 2026, metodo_pago: 'Transferencia', estado: 'APROBADO' },
-  { id: 'ing-11', tipo_ingreso: 'CUOTA_ALUMNA', alumna_codigo: '0011', concepto: 'Cuota Mensual TotalHIIT', fecha_pago: '2026-06-01', moneda_original: 'USD', monto_original: 37, tasa_a_usd: 1.0, tasa_a_ars: 1449.58, usd_equivalente: 37.0, ars_equivalente: 53634.46, mes_periodo: 6, anio_periodo: 2026, metodo_pago: 'Transferencia', estado: 'APROBADO' },
-  { id: 'ing-12', tipo_ingreso: 'CUOTA_ALUMNA', alumna_codigo: '0012', concepto: 'Cuota Mensual TotalHIIT', fecha_pago: '2026-06-01', moneda_original: 'USD', monto_original: 50, tasa_a_usd: 1.0, tasa_a_ars: 1449.58, usd_equivalente: 50.0, ars_equivalente: 72479.0, mes_periodo: 6, anio_periodo: 2026, metodo_pago: 'Transferencia', estado: 'APROBADO' },
-  { id: 'ing-13', tipo_ingreso: 'CUOTA_ALUMNA', alumna_codigo: '0013', concepto: 'Cuota Mensual TotalHIIT', fecha_pago: '2026-06-01', moneda_original: 'USD', monto_original: 40, tasa_a_usd: 1.0, tasa_a_ars: 1449.58, usd_equivalente: 40.0, ars_equivalente: 57983.2, mes_periodo: 6, anio_periodo: 2026, metodo_pago: 'Transferencia', estado: 'APROBADO' },
-  { id: 'ing-14', tipo_ingreso: 'CUOTA_ALUMNA', alumna_codigo: '0014', concepto: 'Cuota Mensual TotalHIIT', fecha_pago: '2026-06-01', moneda_original: 'ARS', monto_original: 40000, tasa_a_usd: 0.00069, tasa_a_ars: 1.0, usd_equivalente: 27.59, ars_equivalente: 40000.0, mes_periodo: 6, anio_periodo: 2026, metodo_pago: 'Transferencia', estado: 'APROBADO' },
-  { id: 'ing-15', tipo_ingreso: 'CUOTA_ALUMNA', alumna_codigo: '0015', concepto: 'Cuota Mensual TotalHIIT', fecha_pago: '2026-06-01', moneda_original: 'ARS', monto_original: 42000, tasa_a_usd: 0.00069, tasa_a_ars: 1.0, usd_equivalente: 28.98, ars_equivalente: 42000.0, mes_periodo: 6, anio_periodo: 2026, metodo_pago: 'Transferencia', estado: 'APROBADO' },
-  { id: 'ing-16', tipo_ingreso: 'CUOTA_ALUMNA', alumna_codigo: '0016', concepto: 'Cuota Mensual TotalHIIT', fecha_pago: '2026-06-01', moneda_original: 'EUR', monto_original: 34, tasa_a_usd: 1.1468, tasa_a_ars: 1662.36, usd_equivalente: 38.99, ars_equivalente: 56520.24, mes_periodo: 6, anio_periodo: 2026, metodo_pago: 'Transferencia', estado: 'APROBADO' },
-  { id: 'ing-17', tipo_ingreso: 'CUOTA_ALUMNA', alumna_codigo: '0017', concepto: 'Cuota Mensual TotalHIIT', fecha_pago: '2026-06-01', moneda_original: 'USD', monto_original: 30, tasa_a_usd: 1.0, tasa_a_ars: 1449.58, usd_equivalente: 30.0, ars_equivalente: 43487.4, mes_periodo: 6, anio_periodo: 2026, metodo_pago: 'Transferencia', estado: 'APROBADO' },
-  { id: 'ing-18', tipo_ingreso: 'CUOTA_ALUMNA', alumna_codigo: '0018', concepto: 'Cuota Mensual TotalHIIT', fecha_pago: '2026-06-01', moneda_original: 'EUR', monto_original: 36, tasa_a_usd: 1.1468, tasa_a_ars: 1662.36, usd_equivalente: 41.28, ars_equivalente: 59844.96, mes_periodo: 6, anio_periodo: 2026, metodo_pago: 'Transferencia', estado: 'APROBADO' },
-  { id: 'ing-19', tipo_ingreso: 'CUOTA_ALUMNA', alumna_codigo: '0019', concepto: 'Cuota Mensual TotalHIIT', fecha_pago: '2026-06-01', moneda_original: 'EUR', monto_original: 36, tasa_a_usd: 1.1468, tasa_a_ars: 1662.36, usd_equivalente: 41.28, ars_equivalente: 59844.96, mes_periodo: 6, anio_periodo: 2026, metodo_pago: 'Transferencia', estado: 'APROBADO' },
-  { id: 'ing-20', tipo_ingreso: 'CUOTA_ALUMNA', alumna_codigo: '0020', concepto: 'Cuota Mensual TotalHIIT', fecha_pago: '2026-06-01', moneda_original: 'USD', monto_original: 40, tasa_a_usd: 1.0, tasa_a_ars: 1449.58, usd_equivalente: 40.0, ars_equivalente: 57983.2, mes_periodo: 6, anio_periodo: 2026, metodo_pago: 'Transferencia', estado: 'APROBADO' },
-  { id: 'ing-21', tipo_ingreso: 'CUOTA_ALUMNA', alumna_codigo: '0021', concepto: 'Cuota Mensual TotalHIIT', fecha_pago: '2026-06-01', moneda_original: 'ARS', monto_original: 37000, tasa_a_usd: 0.00069, tasa_a_ars: 1.0, usd_equivalente: 25.53, ars_equivalente: 37000.0, mes_periodo: 6, anio_periodo: 2026, metodo_pago: 'Transferencia', estado: 'APROBADO' },
-  { id: 'ing-22', tipo_ingreso: 'CUOTA_ALUMNA', alumna_codigo: '0022', concepto: 'Cuota Mensual TotalHIIT', fecha_pago: '2026-06-01', moneda_original: 'ARS', monto_original: 42000, tasa_a_usd: 0.00069, tasa_a_ars: 1.0, usd_equivalente: 28.98, ars_equivalente: 42000.0, mes_periodo: 6, anio_periodo: 2026, metodo_pago: 'Transferencia', estado: 'APROBADO' },
-  { id: 'ing-23', tipo_ingreso: 'CONTRATACION_APP', cliente_o_marca: 'Membresías App Móvil', concepto: 'Suscripciones mensuales App TotalHIIT', fecha_pago: '2026-06-15', moneda_original: 'USD', monto_original: 120, tasa_a_usd: 1.0, tasa_a_ars: 1449.58, usd_equivalente: 120.0, ars_equivalente: 173949.6, mes_periodo: 6, anio_periodo: 2026, metodo_pago: 'Stripe', estado: 'APROBADO' },
-  { id: 'ing-24', tipo_ingreso: 'COLABORACION_MARCA', cliente_o_marca: 'FitPro Suplementos', concepto: 'Patrocinio video bootcamp + mención', fecha_pago: '2026-06-20', moneda_original: 'USD', monto_original: 250, tasa_a_usd: 1.0, tasa_a_ars: 1449.58, usd_equivalente: 250.0, ars_equivalente: 362395.0, mes_periodo: 6, anio_periodo: 2026, metodo_pago: 'PayPal', estado: 'APROBADO' },
-];
+const getNextStudentCode = (students: Alumna[]): string => {
+  const maxCode = students.reduce((max, student) => {
+    const parsed = parseInt(student.codigo, 10);
+    return Number.isFinite(parsed) && parsed > max ? parsed : max;
+  }, 0);
+  return (maxCode + 1).toString().padStart(4, '0');
+};
 
-const EGRESOS_INICIALES: Egreso[] = [
-  { id: 'egr-1', categoria: 'PUBLICIDAD', concepto: 'Campaña Meta Ads (Instagram/FB) Bootcamp +40', fecha: '2026-06-05', proveedor: 'Meta Platforms', moneda_original: 'USD', monto_original: 100, tasa_a_usd: 1.0, tasa_a_ars: 1449.58, usd_equivalente: 100.0, ars_equivalente: 144958.0, mes_periodo: 6, anio_periodo: 2026, metodo_pago: 'Tarjeta' },
-  { id: 'egr-2', categoria: 'EQUIPOS', concepto: 'Micrófono inalámbrico corbatero para filmación', fecha: '2026-06-10', proveedor: 'Amazon / MercadoLibre', moneda_original: 'USD', monto_original: 65, tasa_a_usd: 1.0, tasa_a_ars: 1449.58, usd_equivalente: 65.0, ars_equivalente: 94222.7, mes_periodo: 6, anio_periodo: 2026, metodo_pago: 'Tarjeta' },
-  { id: 'egr-3', categoria: 'SOFTWARE_HOSTING', concepto: 'Servidor, CDN Cloudflare y almacenamiento video', fecha: '2026-06-12', proveedor: 'Cloudflare Inc.', moneda_original: 'USD', monto_original: 20, tasa_a_usd: 1.0, tasa_a_ars: 1449.58, usd_equivalente: 20.0, ars_equivalente: 28991.6, mes_periodo: 6, anio_periodo: 2026, metodo_pago: 'Tarjeta' },
-  { id: 'egr-4', categoria: 'IMPUESTOS', concepto: 'Monotributo / Declaración fiscal del período', fecha: '2026-06-18', proveedor: 'AFIP / DGI', moneda_original: 'ARS', monto_original: 45000, tasa_a_usd: 0.00069, tasa_a_ars: 1.0, usd_equivalente: 31.05, ars_equivalente: 45000.0, mes_periodo: 6, anio_periodo: 2026, metodo_pago: 'Transferencia' },
-];
+const isRegistrationInRoster = (registration: FichaRegistro, students: Alumna[]): boolean => {
+  if (registration.validated === true) return true;
+  if (
+    registration.linked_student_code &&
+    students.some((student) => student.codigo === registration.linked_student_code)
+  ) {
+    return true;
+  }
+  const regEmail = normalizeText(registration.email);
+  const regFullName = normalizeText(
+    registration.nombre_completo || `${registration.nombre || ''} ${registration.apellido || ''}`
+  );
+  return students.some((student) => {
+    const studentEmail = normalizeText(student.email);
+    const studentName = normalizeText(student.nombre_completo);
+    return (
+      (Boolean(regEmail) && Boolean(studentEmail) && regEmail === studentEmail) ||
+      (Boolean(regFullName) && Boolean(studentName) && regFullName === studentName)
+    );
+  });
+};
 
 const PLANTILLA_RECORDATORIO_DEFECTO = `¡Hola {nombre}! 🌟 Espero que estés teniendo una excelente semana y sintiendo en tu cuerpo toda la fuerza y vitalidad que vienes construyendo con cada entrenamiento de TotalHIIT. 💪✨
 
@@ -315,40 +294,40 @@ export default function CRMApp() {
     return PAISES_INICIALES;
   });
 
-  // Alumnas
+  // Alumnas (loaded from cloud KV; never inject mock seed records)
   const [alumnas, setAlumnas] = useState<Alumna[]>(() => {
     const raw = localStorage.getItem(LLAVE_STORAGE_ALUMNAS);
     if (raw) {
       try {
         const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) return parsed;
       } catch {}
     }
-    return ALUMNAS_INICIALES;
+    return [];
   });
 
-  // Ingresos
+  // Ingresos (loaded from cloud KV; never inject mock seed records)
   const [ingresos, setIngresos] = useState<Ingreso[]>(() => {
     const raw = localStorage.getItem(LLAVE_STORAGE_INGRESOS);
     if (raw) {
       try {
         const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) return parsed;
       } catch {}
     }
-    return INGRESOS_INICIALES;
+    return [];
   });
 
-  // Egresos
+  // Egresos (loaded from cloud KV; never inject mock seed records)
   const [egresos, setEgresos] = useState<Egreso[]>(() => {
     const raw = localStorage.getItem(LLAVE_STORAGE_EGRESOS);
     if (raw) {
       try {
         const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) return parsed;
       } catch {}
     }
-    return EGRESOS_INICIALES;
+    return [];
   });
 
   // Historial de Logs & Auditoría (Solo Lectura)
@@ -360,45 +339,19 @@ export default function CRMApp() {
         if (Array.isArray(parsed)) return parsed;
       } catch {}
     }
-    return [
-      {
-        id: 'log-inicial',
-        fecha_hora: '2026-06-01 12:00:00',
-        admin_email: 'ebolivar1000@gmail.com',
-        modulo: 'ALUMNAS',
-        tipo_accion: 'CAMBIO_CUOTA_ALUMNA',
-        detalle: 'Carga certificada inicial del padrón de 23 alumnas desde Excel oficial',
-        monto_previo: '—',
-        monto_nuevo: 'Cuotas base fijadas',
-      },
-    ];
+    return [];
   });
 
-  // Fichas de Registro e Historial Integral (Google Form Integrado - 49 Campos) - 23 Alumnas Oficiales
+  // Student Registration Forms (loaded from cloud KV; never resurrect mock seed records)
   const [fichas, setFichas] = useState<FichaRegistro[]>(() => {
     const raw = localStorage.getItem('totalhiit_crm_fichas_registro_v4');
     if (raw) {
       try {
         const parsed: FichaRegistro[] = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length >= FICHAS_INICIALES.length) return parsed;
+        if (Array.isArray(parsed)) return parsed;
       } catch {}
     }
-    // Si viene de caché previa (v3 o v1), fusionar conservando registros nuevos que no estén en FICHAS_INICIALES
-    try {
-      const oldRaw = localStorage.getItem('totalhiit_crm_fichas_registro_v3') || localStorage.getItem('totalhiit_crm_fichas_registro');
-      if (oldRaw) {
-        const oldParsed: FichaRegistro[] = JSON.parse(oldRaw);
-        if (Array.isArray(oldParsed) && oldParsed.length > 0) {
-          const idsIniciales = new Set(FICHAS_INICIALES.map((f) => f.id || f.email.toLowerCase()));
-          const registrosNuevos = oldParsed.filter((f) => !idsIniciales.has(f.id) && !idsIniciales.has(f.email?.toLowerCase()));
-          const fusionadas = [...registrosNuevos, ...FICHAS_INICIALES];
-          localStorage.setItem('totalhiit_crm_fichas_registro_v4', JSON.stringify(fusionadas));
-          return fusionadas;
-        }
-      }
-    } catch {}
-    localStorage.setItem('totalhiit_crm_fichas_registro_v4', JSON.stringify(FICHAS_INICIALES));
-    return FICHAS_INICIALES;
+    return [];
   });
 
   useEffect(() => {
@@ -407,49 +360,15 @@ export default function CRMApp() {
     localStorage.setItem('totalhiit_crm_fichas_registro', JSON.stringify(fichas));
   }, [fichas]);
 
-  // Sincronización en vivo si una alumna envía su formulario desde otra pestaña o ventana
-  useEffect(() => {
-    const handleStorageChange = (e: StorageEvent) => {
-      if ((e.key === 'totalhiit_crm_fichas_registro_v4' || e.key === 'totalhiit_crm_fichas_registro_v3' || e.key === 'totalhiit_crm_fichas_registro') && e.newValue) {
-        try {
-          const actualizadas = JSON.parse(e.newValue);
-          if (Array.isArray(actualizadas)) {
-            setFichas(actualizadas);
-          }
-        } catch {}
-      }
-    };
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-  }, []);
-
   // Modal Ver Ficha Detallada & Filtros
   const [fichaModal, setFichaModal] = useState<FichaRegistro | null>(null);
   const [busquedaFichas, setBusquedaFichas] = useState('');
   const [filtroObjetivoFichas, setFiltroObjetivoFichas] = useState<string>('todos');
   const [filtroEstadoFichas, setFiltroEstadoFichas] = useState<'todas' | 'pendientes' | 'en_padron'>('todas');
   const [copiadoLinkRegistro, setCopiadoLinkRegistro] = useState(false);
-
-  // Sincronización automática de fichas recibidas en la nube al abrir el CRM
-  useEffect(() => {
-    fetch('/api/crm-ficha')
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data: any) => {
-        if (data && Array.isArray(data.fichas) && data.fichas.length > 0) {
-          setFichas((prev) => {
-            const idsExistentes = new Set(prev.map((f) => f.id));
-            const nuevas = data.fichas.filter((f: any) => f && f.id && !idsExistentes.has(f.id));
-            if (nuevas.length > 0) {
-              const actualizadas = [...nuevas, ...prev];
-              localStorage.setItem('totalhiit_crm_fichas_registro_v4', JSON.stringify(actualizadas));
-              return actualizadas;
-            }
-            return prev;
-          });
-        }
-      })
-      .catch(() => {});
-  }, []);
+  const [validatingRegistrationId, setValidatingRegistrationId] = useState<string | null>(null);
+  const [studentFormError, setStudentFormError] = useState<string>('');
+  const [incomeFormError, setIncomeFormError] = useState<string>('');
 
   // Plantilla de Recordatorios
   const [plantillaMsg, setPlantillaMsg] = useState<string>(() => {
@@ -488,6 +407,7 @@ export default function CRMApp() {
   const cloudVersionRef = useRef<number>(0);
   const savingInFlightRef = useRef(false);
   const pendingPayloadRef = useRef<CrmStatePayload | null>(null);
+  const pendingDeletedFichaIdsRef = useRef<string[]>([]);
   const saveTimerRef = useRef<number | null>(null);
   const lastMutationTimeRef = useRef<number>(0);
   const isRemoteApplyingRef = useRef<boolean>(false);
@@ -520,11 +440,17 @@ export default function CRMApp() {
     }, 150);
   };
 
-  const pushToCloud = async (payloadToSave: CrmStatePayload) => {
+  const pushToCloud = async (payloadToSave: CrmStatePayload, deletedRegistrationIds: string[] = []) => {
     if (!autenticado) return;
     lastMutationTimeRef.current = Date.now();
 
-    // Si ya hay una operación de guardado en curso, encolar el payload más reciente
+    if (deletedRegistrationIds.length > 0) {
+      pendingDeletedFichaIdsRef.current = Array.from(
+        new Set([...pendingDeletedFichaIdsRef.current, ...deletedRegistrationIds])
+      );
+    }
+
+    // Queue latest payload if another save is currently in flight
     if (savingInFlightRef.current) {
       pendingPayloadRef.current = payloadToSave;
       return;
@@ -539,19 +465,41 @@ export default function CRMApp() {
 
       while (currentPayload) {
         pendingPayloadRef.current = null;
-        const res = await saveCrmStateRemote(adminEmail, adminClave, currentPayload);
+        const deletedBatch = [...pendingDeletedFichaIdsRef.current];
+        pendingDeletedFichaIdsRef.current = [];
+
+        const res = await saveCrmStateRemote(adminEmail, adminClave, currentPayload, null, deletedBatch);
 
         if (res.ok && typeof res.version === 'number') {
           cloudVersionRef.current = res.version;
           setRemoteVersion(res.version);
           setSyncStatus('synced');
           setLastSyncTime(new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+
+          // Immediately surface any newly arrived student registrations preserved by the server
+          if (res.mergedNewFichas && res.mergedNewFichas.length > 0) {
+            const incomingMerged = res.mergedNewFichas;
+            isRemoteApplyingRef.current = true;
+            setFichas((prev) => {
+              const existingIds = new Set(prev.map((item) => item.id));
+              const fresh = incomingMerged.filter((item) => item && item.id && !existingIds.has(item.id));
+              return fresh.length > 0 ? [...fresh, ...prev] : prev;
+            });
+            setTimeout(() => {
+              isRemoteApplyingRef.current = false;
+            }, 150);
+          }
         } else {
+          // Restore deleted IDs to queue on failure so nothing is lost
+          if (deletedBatch.length > 0) {
+            pendingDeletedFichaIdsRef.current = Array.from(
+              new Set([...pendingDeletedFichaIdsRef.current, ...deletedBatch])
+            );
+          }
           setSyncStatus('error');
           setSyncErrorMsg(res.error || 'Error al guardar en la nube');
         }
 
-        // Si mientras guardábamos se encoló otro cambio, procesarlo de inmediato
         currentPayload = pendingPayloadRef.current;
       }
     } catch {
@@ -562,15 +510,15 @@ export default function CRMApp() {
     }
   };
 
-  // Función para persistir de inmediato ante acciones explícitas (altas, bajas, ediciones)
-  const persistirCambioInmediato = (nuevoPayload: CrmStatePayload) => {
+  // Immediate cloud persistence for explicit user actions (create, update, delete)
+  const persistirCambioInmediato = (nuevoPayload: CrmStatePayload, deletedRegistrationIds: string[] = []) => {
     lastMutationTimeRef.current = Date.now();
     if (saveTimerRef.current) {
       window.clearTimeout(saveTimerRef.current);
       saveTimerRef.current = null;
     }
     latestPayloadRef.current = nuevoPayload;
-    pushToCloud(nuevoPayload);
+    pushToCloud(nuevoPayload, deletedRegistrationIds);
   };
 
   const syncFromCloud = async (isInitial = false) => {
@@ -1069,6 +1017,7 @@ export default function CRMApp() {
 
   // Acciones de Ingresos (Requerimiento 2 y 3)
   const abrirEditarIngreso = (ing: Ingreso) => {
+    setIncomeFormError('');
     setIngresoEdit(ing);
     setIngTipo(ing.tipo_ingreso);
     setIngAlumnaCod(ing.alumna_codigo || '');
@@ -1087,6 +1036,7 @@ export default function CRMApp() {
   };
 
   const abrirNuevoIngreso = () => {
+    setIncomeFormError('');
     setIngresoEdit(null);
     setIngTipo('CUOTA_ALUMNA');
     setIngAlumnaCod(alumnas[0]?.codigo || '');
@@ -1871,17 +1821,9 @@ export default function CRMApp() {
     );
   };
 
-  // Fichas pendientes de validación (no incorporadas aún al padrón de alumnas)
+  // Pending student registrations (not yet validated/linked in roster)
   const fichasPendientesValidacion = useMemo(() => {
-    return fichas.filter((f) => {
-      const fEmail = (f.email || '').toLowerCase().trim();
-      const fNombre = (f.nombre_completo || `${f.nombre} ${f.apellido}`).toLowerCase().trim();
-      return !alumnas.some((a) => {
-        const aEmail = (a.email || '').toLowerCase().trim();
-        const aNombre = (a.nombre_completo || '').toLowerCase().trim();
-        return (fEmail && aEmail && fEmail === aEmail) || (fNombre && aNombre && fNombre === aNombre);
-      });
-    });
+    return fichas.filter((f) => !isRegistrationInRoster(f, alumnas));
   }, [fichas, alumnas]);
 
   // Memos y Exportaciones de Fichas de Alumnas (Google Form Integrado)
@@ -1897,11 +1839,7 @@ export default function CRMApp() {
 
       const matchObj = filtroObjetivoFichas === 'todos' || f.objetivo_principal === filtroObjetivoFichas;
 
-      const yaEnPadron = alumnas.some(
-        (a) =>
-          a.email?.toLowerCase().trim() === f.email.toLowerCase().trim() ||
-          a.nombre_completo.toLowerCase().trim() === f.nombre_completo.toLowerCase().trim()
-      );
+      const yaEnPadron = isRegistrationInRoster(f, alumnas);
       if (filtroEstadoFichas === 'pendientes' && yaEnPadron) return false;
       if (filtroEstadoFichas === 'en_padron' && !yaEnPadron) return false;
 
@@ -2040,16 +1978,53 @@ export default function CRMApp() {
     );
   };
 
+  const deleteRegistration = (registration: FichaRegistro) => {
+    if (
+      window.confirm(
+        `¿Seguro que deseas eliminar permanentemente la ficha de ${registration.nombre_completo}? Esta acción no se puede deshacer y quedará registrada en Auditoría.`
+      )
+    ) {
+      const auditEntry: RegistroAuditoria = {
+        id: `log-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        fecha_hora: new Date().toLocaleString('es-ES'),
+        admin_email: adminEmail,
+        modulo: 'ALUMNAS',
+        tipo_accion: 'CAMBIO_CUOTA_ALUMNA',
+        detalle: `Eliminación permanente de ficha de registro #${registration.id}: ${registration.nombre_completo} (${registration.email || 'sin email'})`,
+        monto_previo: 'Ficha Registro',
+        monto_nuevo: 'Eliminada',
+      };
+      const updatedRegistrations = fichas.filter((item) => item.id !== registration.id);
+      const updatedLogs = [auditEntry, ...logsAuditoria];
+
+      setFichas(updatedRegistrations);
+      setLogsAuditoria(updatedLogs);
+      if (fichaModal?.id === registration.id) {
+        setFichaModal(null);
+      }
+      persistirCambioInmediato(
+        {
+          ...getCurrentPayload(),
+          fichas: updatedRegistrations,
+          logsAuditoria: updatedLogs,
+        },
+        [registration.id]
+      );
+    }
+  };
+
   const pasarFichaAAlumna = (f: FichaRegistro) => {
     setAlumnaEdit(null);
-    setFormCod((alumnas.length + 1).toString().padStart(4, '0'));
-    setFormNombre(f.nombre_completo);
-    setFormEmail(f.email);
-    setFormTel(f.telefono_whatsapp);
+    setValidatingRegistrationId(f.id);
+    setStudentFormError('');
+    setFormCod(getNextStudentCode(alumnas));
+    setFormNombre((f.nombre_completo || `${f.nombre || ''} ${f.apellido || ''}`).trim());
+    setFormEmail((f.email || '').trim());
+    setFormTel((f.telefono_whatsapp || '').trim());
     let matchPaisId = 1;
-    const locLower = f.localidad_pais.toLowerCase();
+    const locLower = normalizeText(f.localidad_pais);
     for (const p of paises) {
-      if (locLower.includes(p.nombre.toLowerCase())) {
+      if (locLower.includes(normalizeText(p.nombre))) {
         matchPaisId = p.id;
         break;
       }
@@ -2542,7 +2517,9 @@ export default function CRMApp() {
                 <button
                   onClick={() => {
                     setAlumnaEdit(null);
-                    setFormCod((alumnas.length + 1).toString().padStart(4, '0'));
+                    setValidatingRegistrationId(null);
+                    setStudentFormError('');
+                    setFormCod(getNextStudentCode(alumnas));
                     setFormNombre('');
                     setFormEmail('');
                     setFormTel('');
@@ -2655,6 +2632,8 @@ export default function CRMApp() {
                             <button
                               onClick={() => {
                                 setAlumnaEdit(a);
+                                setValidatingRegistrationId(null);
+                                setStudentFormError('');
                                 setFormCod(a.codigo);
                                 setFormNombre(a.nombre_completo);
                                 setFormEmail(a.email || '');
@@ -2674,7 +2653,12 @@ export default function CRMApp() {
                             </button>
                             <button
                               onClick={() => {
-                                if (window.confirm(`¿Seguro que deseas eliminar a ${a.nombre_completo}? Esta acción quedará registrada en Auditoría.`)) {
+                                const linkedPaymentsCount = ingresos.filter((inc) => inc.alumna_codigo === a.codigo).length;
+                                const warningNote =
+                                  linkedPaymentsCount > 0
+                                    ? `\n\nNota: Esta alumna tiene ${linkedPaymentsCount} pago(s) registrado(s) en Ingresos; sus pagos conservarán su nombre histórico.`
+                                    : '';
+                                if (window.confirm(`¿Seguro que deseas eliminar a ${a.nombre_completo}? Esta acción quedará registrada en Auditoría.${warningNote}`)) {
                                   const nuevoLog: RegistroAuditoria = {
                                     id: `log-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
                                     fecha_hora: new Date().toLocaleString('es-ES'),
@@ -2686,13 +2670,21 @@ export default function CRMApp() {
                                     monto_nuevo: '0 (Alumna eliminada)',
                                   };
                                   const nuevasAlumnas = alumnas.filter((x) => x.codigo !== a.codigo);
+                                  // Preserve student name snapshot on historical payments so they never turn into "—"
+                                  const updatedIncomes = ingresos.map((inc) =>
+                                    inc.alumna_codigo === a.codigo && !inc.alumna_nombre_snapshot
+                                      ? { ...inc, alumna_nombre_snapshot: a.nombre_completo }
+                                      : inc
+                                  );
                                   const nuevosLogs = [nuevoLog, ...logsAuditoria];
 
                                   setAlumnas(nuevasAlumnas);
+                                  setIngresos(updatedIncomes);
                                   setLogsAuditoria(nuevosLogs);
                                   persistirCambioInmediato({
                                     ...getCurrentPayload(),
                                     alumnas: nuevasAlumnas,
+                                    ingresos: updatedIncomes,
                                     logsAuditoria: nuevosLogs,
                                   });
                                 }
@@ -3424,6 +3416,13 @@ export default function CRMApp() {
                                   ✓ En Padrón
                                 </span>
                               )}
+                              <button
+                                onClick={() => deleteRegistration(f)}
+                                className="rounded-lg bg-red-50 p-1.5 text-red-600 hover:bg-red-100 cursor-pointer inline-flex items-center"
+                                title="Eliminar ficha permanentemente"
+                              >
+                                <Trash2 size={13} />
+                              </button>
                             </td>
                           </tr>
                         );
@@ -3658,6 +3657,13 @@ export default function CRMApp() {
                             {al ? (
                               <span>
                                 {pais?.bandera} {al.nombre_completo}
+                              </span>
+                            ) : ing.tipo_ingreso === 'CUOTA_ALUMNA' ? (
+                              <span className="inline-flex items-center gap-1 text-amber-700" title="Alumna no encontrada en el padrón actual; puedes editar este ingreso para reasignarlo">
+                                <span>{ing.alumna_nombre_snapshot || (ing.alumna_codigo ? `Cód. ${ing.alumna_codigo}` : 'Sin alumna')}</span>
+                                <span className="rounded bg-amber-50 border border-amber-200 px-1.5 py-0.5 text-[9px] font-bold text-amber-800">
+                                  Reasignar / Eliminada
+                                </span>
                               </span>
                             ) : (
                               ing.cliente_o_marca || '—'
@@ -4540,56 +4546,172 @@ export default function CRMApp() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
           <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto text-xs">
             <div className="flex items-center justify-between border-b pb-2">
-              <h3 className="text-sm font-bold text-stone-900">{alumnaEdit ? 'Editar Alumna' : 'Nueva Alumna'}</h3>
-              <button onClick={() => setModalAlumna(false)} className="text-stone-400 hover:text-stone-600 text-sm">✕</button>
+              <h3 className="text-sm font-bold text-stone-900">
+                {alumnaEdit
+                  ? 'Editar Alumna'
+                  : validatingRegistrationId
+                  ? 'Validar e Incorporar Alumna al Padrón'
+                  : 'Nueva Alumna'}
+              </h3>
+              <button
+                onClick={() => {
+                  setModalAlumna(false);
+                  setValidatingRegistrationId(null);
+                  setStudentFormError('');
+                }}
+                className="text-stone-400 hover:text-stone-600 text-sm cursor-pointer"
+              >
+                ✕
+              </button>
             </div>
+
+            {studentFormError && (
+              <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[11px] font-semibold text-red-700">
+                ⚠️ {studentFormError}
+              </div>
+            )}
 
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                const nueva: Alumna = {
-                  codigo: formCod.trim(),
-                  nombre_completo: formNombre.trim(),
-                  email: formEmail.trim() || undefined,
-                  telefono_whatsapp: formTel.trim() || undefined,
-                  pais_id: Number(formPais),
-                  moneda_preferida: formMoneda,
-                  cuota_mensual: Number(formCuota) || (formMoneda === 'ARS' ? 40000 : 40),
-                  fecha_inicio: alumnaEdit ? alumnaEdit.fecha_inicio : '2026-06-01',
-                  dia_de_pago: Number(formDia) || 1,
+                setStudentFormError('');
+
+                const cleanCode = formCod.trim();
+                const cleanName = formNombre.trim();
+                const cleanEmail = formEmail.trim().toLowerCase();
+                const cleanPhone = formTel.trim();
+                const cleanCountryId = Number(formPais);
+                const cleanCurrency = formMoneda.trim().toUpperCase();
+                const cleanFee = Number(formCuota);
+                const cleanBillingDay = Number(formDia);
+
+                if (!cleanCode) {
+                  setStudentFormError('El código de la alumna es obligatorio.');
+                  return;
+                }
+                if (cleanName.length < 2) {
+                  setStudentFormError('El nombre completo es obligatorio.');
+                  return;
+                }
+                if (!cleanEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+                  setStudentFormError('Ingresa un correo electrónico válido (campo obligatorio).');
+                  return;
+                }
+                if (!cleanPhone || cleanPhone.replace(/[^\d]/g, '').length < 6) {
+                  setStudentFormError('El teléfono WhatsApp es obligatorio (mínimo 6 dígitos).');
+                  return;
+                }
+                if (!cleanCountryId || !mapaPaises.has(cleanCountryId)) {
+                  setStudentFormError('Debes seleccionar un país válido.');
+                  return;
+                }
+                if (!cleanCurrency) {
+                  setStudentFormError('Debes seleccionar una moneda.');
+                  return;
+                }
+                if (!Number.isFinite(cleanFee) || cleanFee <= 0) {
+                  setStudentFormError('La cuota mensual pactada debe ser mayor a 0.');
+                  return;
+                }
+                if (!Number.isInteger(cleanBillingDay) || cleanBillingDay < 1 || cleanBillingDay > 31) {
+                  setStudentFormError('El día de cobro debe estar entre 1 y 31.');
+                  return;
+                }
+
+                // Prevent silent overwrite of an existing student code
+                const duplicateCodeOwner = alumnas.find(
+                  (existing) =>
+                    existing.codigo === cleanCode &&
+                    (!alumnaEdit || existing.codigo !== alumnaEdit.codigo)
+                );
+                if (duplicateCodeOwner) {
+                  setStudentFormError(
+                    `El código ${cleanCode} ya pertenece a ${duplicateCodeOwner.nombre_completo}. Usa el código sugerido ${getNextStudentCode(alumnas)} u otro libre.`
+                  );
+                  return;
+                }
+
+                const newStudent: Alumna = {
+                  codigo: cleanCode,
+                  nombre_completo: cleanName,
+                  email: cleanEmail,
+                  telefono_whatsapp: cleanPhone,
+                  pais_id: cleanCountryId,
+                  moneda_preferida: cleanCurrency,
+                  cuota_mensual: cleanFee,
+                  fecha_inicio: alumnaEdit ? alumnaEdit.fecha_inicio : new Date().toISOString().split('T')[0],
+                  dia_de_pago: cleanBillingDay,
                   activa: Number(formActiva),
                   notas: formNotas.trim() || undefined,
                 };
-                let nuevosLogs = logsAuditoria;
-                if (alumnaEdit && (alumnaEdit.cuota_mensual !== nueva.cuota_mensual || alumnaEdit.moneda_preferida !== nueva.moneda_preferida)) {
-                  const nuevoLog: RegistroAuditoria = {
+
+                let updatedLogs = logsAuditoria;
+                if (
+                  alumnaEdit &&
+                  (alumnaEdit.cuota_mensual !== newStudent.cuota_mensual ||
+                    alumnaEdit.moneda_preferida !== newStudent.moneda_preferida)
+                ) {
+                  const auditEntry: RegistroAuditoria = {
                     id: `log-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
                     fecha_hora: new Date().toLocaleString('es-ES'),
                     admin_email: adminEmail,
                     modulo: 'ALUMNAS',
                     tipo_accion: 'CAMBIO_CUOTA_ALUMNA',
-                    detalle: `Modificación de cuota mensual para ${nueva.nombre_completo} (${nueva.codigo})`,
+                    detalle: `Modificación de cuota mensual para ${newStudent.nombre_completo} (${newStudent.codigo})`,
                     monto_previo: `${alumnaEdit.moneda_preferida} ${alumnaEdit.cuota_mensual}`,
-                    monto_nuevo: `${nueva.moneda_preferida} ${nueva.cuota_mensual}`,
+                    monto_nuevo: `${newStudent.moneda_preferida} ${newStudent.cuota_mensual}`,
                   };
-                  nuevosLogs = [nuevoLog, ...logsAuditoria];
-                  setLogsAuditoria(nuevosLogs);
+                  updatedLogs = [auditEntry, ...logsAuditoria];
+                  setLogsAuditoria(updatedLogs);
                 }
-                const sinActual = alumnas.filter((x) => x.codigo !== nueva.codigo);
-                const nuevasAlumnas = [...sinActual, nueva].sort((a, b) => a.codigo.localeCompare(b.codigo));
-                setAlumnas(nuevasAlumnas);
+
+                const previousCode = alumnaEdit ? alumnaEdit.codigo : newStudent.codigo;
+                const withoutPrevious = alumnas.filter((x) => x.codigo !== previousCode);
+                const updatedStudents = [...withoutPrevious, newStudent].sort((a, b) =>
+                  a.codigo.localeCompare(b.codigo)
+                );
+
+                // If student code or name changed, keep linked income records synchronized
+                let updatedIncomes = ingresos;
+                if (alumnaEdit && (alumnaEdit.codigo !== newStudent.codigo || alumnaEdit.nombre_completo !== newStudent.nombre_completo)) {
+                  updatedIncomes = ingresos.map((inc) =>
+                    inc.alumna_codigo === alumnaEdit.codigo
+                      ? { ...inc, alumna_codigo: newStudent.codigo, alumna_nombre_snapshot: newStudent.nombre_completo }
+                      : inc
+                  );
+                  setIngresos(updatedIncomes);
+                }
+
+                // If validating a pending registration form, atomically mark it validated & linked
+                let updatedRegistrations = fichas;
+                if (validatingRegistrationId) {
+                  updatedRegistrations = fichas.map((reg) =>
+                    reg.id === validatingRegistrationId
+                      ? { ...reg, validated: true, linked_student_code: newStudent.codigo }
+                      : reg
+                  );
+                  setFichas(updatedRegistrations);
+                }
+
+                setAlumnas(updatedStudents);
                 persistirCambioInmediato({
                   ...getCurrentPayload(),
-                  alumnas: nuevasAlumnas,
-                  logsAuditoria: nuevosLogs,
+                  alumnas: updatedStudents,
+                  ingresos: updatedIncomes,
+                  fichas: updatedRegistrations,
+                  logsAuditoria: updatedLogs,
                 });
+                setValidatingRegistrationId(null);
+                setStudentFormError('');
                 setModalAlumna(false);
               }}
               className="space-y-3"
             >
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-[11px] font-semibold text-stone-600 mb-0.5">Código</label>
+                  <label className="block text-[11px] font-semibold text-stone-600 mb-0.5">
+                    Código <span className="text-red-500">*</span>
+                  </label>
                   <input
                     value={formCod}
                     onChange={(e) => setFormCod(e.target.value)}
@@ -4598,10 +4720,13 @@ export default function CRMApp() {
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-semibold text-stone-600 mb-0.5">Estado</label>
+                  <label className="block text-[11px] font-semibold text-stone-600 mb-0.5">
+                    Estado <span className="text-red-500">*</span>
+                  </label>
                   <select
                     value={formActiva}
                     onChange={(e) => setFormActiva(Number(e.target.value))}
+                    required
                     className="w-full rounded-xl border border-stone-300 p-2 text-xs font-bold"
                   >
                     <option value={1}>✅ Activa</option>
@@ -4611,32 +4736,40 @@ export default function CRMApp() {
               </div>
 
               <div>
-                <label className="block text-[11px] font-semibold text-stone-600 mb-0.5">Nombre Completo</label>
+                <label className="block text-[11px] font-semibold text-stone-600 mb-0.5">
+                  Nombre Completo <span className="text-red-500">*</span>
+                </label>
                 <input
                   value={formNombre}
                   onChange={(e) => setFormNombre(e.target.value)}
                   required
-                  placeholder="Carolina Méndez"
+                  placeholder="Ej: Ana García"
                   className="w-full rounded-xl border border-stone-300 p-2 text-xs"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-[11px] font-semibold text-stone-600 mb-0.5">Correo Electrónico (Email)</label>
+                  <label className="block text-[11px] font-semibold text-stone-600 mb-0.5">
+                    Correo Electrónico (Email) <span className="text-red-500">*</span>
+                  </label>
                   <input
                     type="email"
                     value={formEmail}
                     onChange={(e) => setFormEmail(e.target.value)}
+                    required
                     placeholder="alumna@gmail.com"
                     className="w-full rounded-xl border border-stone-300 p-2 text-xs"
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-semibold text-stone-600 mb-0.5">Teléfono WhatsApp</label>
+                  <label className="block text-[11px] font-semibold text-stone-600 mb-0.5">
+                    Teléfono WhatsApp <span className="text-red-500">*</span>
+                  </label>
                   <input
                     value={formTel}
                     onChange={(e) => setFormTel(e.target.value)}
+                    required
                     placeholder="+1 305 555 0101"
                     className="w-full rounded-xl border border-stone-300 p-2 text-xs"
                   />
@@ -4645,7 +4778,9 @@ export default function CRMApp() {
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-[11px] font-semibold text-stone-600 mb-0.5">País</label>
+                  <label className="block text-[11px] font-semibold text-stone-600 mb-0.5">
+                    País <span className="text-red-500">*</span>
+                  </label>
                   <select
                     value={formPais}
                     onChange={(e) => {
@@ -4658,6 +4793,7 @@ export default function CRMApp() {
                         else setFormCuota(40);
                       }
                     }}
+                    required
                     className="w-full rounded-xl border border-stone-300 p-2 text-xs"
                   >
                     {paises.map((p) => (
@@ -4666,10 +4802,13 @@ export default function CRMApp() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[11px] font-semibold text-stone-600 mb-0.5">Moneda Preferida</label>
+                  <label className="block text-[11px] font-semibold text-stone-600 mb-0.5">
+                    Moneda Preferida <span className="text-red-500">*</span>
+                  </label>
                   <select
                     value={formMoneda}
                     onChange={(e) => setFormMoneda(e.target.value)}
+                    required
                     className="w-full rounded-xl border border-stone-300 p-2 text-xs"
                   >
                     {monedasDisponibles.map((m) => (
@@ -4681,9 +4820,13 @@ export default function CRMApp() {
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-[11px] font-semibold text-stone-600 mb-0.5">Cuota Mensual Pactada</label>
+                  <label className="block text-[11px] font-semibold text-stone-600 mb-0.5">
+                    Cuota Mensual Pactada <span className="text-red-500">*</span>
+                  </label>
                   <input
                     type="number"
+                    min="1"
+                    step="any"
                     value={formCuota}
                     onChange={(e) => setFormCuota(Number(e.target.value))}
                     required
@@ -4691,7 +4834,9 @@ export default function CRMApp() {
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-semibold text-stone-600 mb-0.5">Día de Cobro (1-31)</label>
+                  <label className="block text-[11px] font-semibold text-stone-600 mb-0.5">
+                    Día de Cobro (1-31) <span className="text-red-500">*</span>
+                  </label>
                   <input
                     type="number"
                     min="1"
@@ -4705,7 +4850,9 @@ export default function CRMApp() {
               </div>
 
               <div>
-                <label className="block text-[11px] font-semibold text-stone-600 mb-0.5">Notas / Observaciones</label>
+                <label className="block text-[11px] font-semibold text-stone-600 mb-0.5">
+                  Notas / Observaciones <span className="text-stone-400 font-normal">(Opcional)</span>
+                </label>
                 <textarea
                   rows={2}
                   value={formNotas}
@@ -4718,16 +4865,20 @@ export default function CRMApp() {
               <div className="flex gap-2 pt-2 border-t">
                 <button
                   type="button"
-                  onClick={() => setModalAlumna(false)}
-                  className="flex-1 rounded-xl border border-stone-300 py-2.5 font-bold text-stone-700"
+                  onClick={() => {
+                    setModalAlumna(false);
+                    setValidatingRegistrationId(null);
+                    setStudentFormError('');
+                  }}
+                  className="flex-1 rounded-xl border border-stone-300 py-2.5 font-bold text-stone-700 cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 rounded-xl bg-rose-600 py-2.5 font-bold text-white hover:bg-rose-700"
+                  className="flex-1 rounded-xl bg-rose-600 py-2.5 font-bold text-white hover:bg-rose-700 cursor-pointer"
                 >
-                  Guardar Alumna
+                  {validatingRegistrationId ? 'Validar y Guardar Alumna' : 'Guardar Alumna'}
                 </button>
               </div>
             </form>
@@ -4999,20 +5150,50 @@ export default function CRMApp() {
           <div className="w-full max-w-sm rounded-3xl bg-white p-5 shadow-2xl space-y-3 max-h-[90vh] overflow-y-auto text-xs">
             <div className="flex items-center justify-between border-b pb-2">
               <h3 className="text-sm font-bold text-stone-900">{ingresoEdit ? 'Editar Ingreso' : 'Registrar Ingreso'}</h3>
-              <button onClick={() => setModalIngreso(false)} className="text-stone-400 hover:text-stone-600">✕</button>
+              <button
+                onClick={() => {
+                  setModalIngreso(false);
+                  setIncomeFormError('');
+                }}
+                className="text-stone-400 hover:text-stone-600 cursor-pointer"
+              >
+                ✕
+              </button>
             </div>
+
+            {incomeFormError && (
+              <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[11px] font-semibold text-red-700">
+                ⚠️ {incomeFormError}
+              </div>
+            )}
 
             <form
               onSubmit={(e) => {
                 e.preventDefault();
+                setIncomeFormError('');
                 const montoMes = Number(ingMonto) || 0;
+
+                const selectedStudent =
+                  ingTipo === 'CUOTA_ALUMNA'
+                    ? alumnas.find((a) => a.codigo === ingAlumnaCod)
+                    : undefined;
+
+                if (ingTipo === 'CUOTA_ALUMNA' && !selectedStudent) {
+                  setIncomeFormError('Debes seleccionar una alumna válida del padrón antes de guardar el ingreso.');
+                  return;
+                }
+                if (montoMes <= 0) {
+                  setIncomeFormError('El monto debe ser mayor a 0.');
+                  return;
+                }
 
                 if (ingresoEdit) {
                   const labelMes = `${NOMBRES_MESES[ingMesPeriodo - 1]} ${ingAnioPeriodo}`;
                   const itemActualizado: Ingreso = {
                     ...ingresoEdit,
                     tipo_ingreso: ingTipo,
-                    alumna_codigo: ingTipo === 'CUOTA_ALUMNA' ? ingAlumnaCod : undefined,
+                    alumna_codigo: ingTipo === 'CUOTA_ALUMNA' ? selectedStudent?.codigo : undefined,
+                    alumna_nombre_snapshot: ingTipo === 'CUOTA_ALUMNA' ? selectedStudent?.nombre_completo : undefined,
                     cliente_o_marca: ingTipo !== 'CUOTA_ALUMNA' ? ingClienteMarca : undefined,
                     concepto: ingConcepto,
                     fecha_pago: ingFecha,
@@ -5070,7 +5251,8 @@ export default function CRMApp() {
                   nuevos.push({
                     id: `ing-${Date.now()}-${k}`,
                     tipo_ingreso: ingTipo,
-                    alumna_codigo: ingTipo === 'CUOTA_ALUMNA' ? ingAlumnaCod : undefined,
+                    alumna_codigo: ingTipo === 'CUOTA_ALUMNA' ? selectedStudent?.codigo : undefined,
+                    alumna_nombre_snapshot: ingTipo === 'CUOTA_ALUMNA' ? selectedStudent?.nombre_completo : undefined,
                     cliente_o_marca: ingTipo !== 'CUOTA_ALUMNA' ? ingClienteMarca : undefined,
                     concepto: conc,
                     fecha_pago: ingFecha,
@@ -6015,6 +6197,15 @@ export default function CRMApp() {
                   <MessageCircle size={14} />
                   <span>Escribir por WhatsApp</span>
                 </a>
+
+                <button
+                  type="button"
+                  onClick={() => deleteRegistration(fichaModal)}
+                  className="flex items-center gap-1.5 rounded-xl bg-red-50 border border-red-200 px-3 py-2 text-xs font-bold text-red-700 hover:bg-red-100 cursor-pointer"
+                >
+                  <Trash2 size={14} />
+                  <span>Eliminar Ficha</span>
+                </button>
 
                 <button
                   type="button"

@@ -8,6 +8,7 @@ interface StoredCrmState {
   version: number;
   updatedAt: string;
   updatedBy: string;
+  deletedFichaIds?: string[];
   paises: unknown[];
   alumnas: unknown[];
   ingresos: unknown[];
@@ -16,6 +17,33 @@ interface StoredCrmState {
   logsAuditoria: unknown[];
   plantillaMsg: string;
 }
+
+const sendAdminEmailNotification = async (
+  endpoint: string,
+  payload: Record<string, unknown>,
+  timeoutMs = 4500
+): Promise<boolean> => {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        Origin: 'https://totalhiit.pages.dev',
+        Referer: 'https://totalhiit.pages.dev/crm/registro/',
+      },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+    return response.ok;
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(timer);
+  }
+};
 
 export const onRequestGet = async (ctx: Ctx): Promise<Response> => {
   if (!ctx.env.SITE_CONTENT) {
@@ -47,91 +75,93 @@ export const onRequestPost = async (ctx: Ctx): Promise<Response> => {
     return json({ ok: false, error: 'Datos inválidos.' }, 400);
   }
 
-  const ficha = body as Record<string, unknown>;
+  const rawRecord = body as Record<string, unknown>;
+  const skipNotifications = rawRecord.skipNotifications === true;
+  const ficha: Record<string, unknown> = { ...rawRecord };
+  delete ficha.skipNotifications;
+
   if (typeof ficha.id !== 'string' || !ficha.id.trim() || typeof ficha.nombre !== 'string' || !ficha.nombre.trim()) {
     return json({ ok: false, error: 'Faltan campos obligatorios de la ficha.' }, 400);
   }
 
-  // 1. Guardar siempre en incoming_fichas_v1 para no perder ningún registro
+  const recordId = ficha.id.trim();
+
+  // 1. Always persist in incoming_fichas_v1 as a durable intake queue
   const incoming =
     ((await ctx.env.SITE_CONTENT.get(INCOMING_FICHAS_KEY, 'json')) as Array<Record<string, unknown>>) || [];
   const nextIncoming = [
     ficha,
-    ...incoming.filter((item) => item && item.id !== ficha.id),
+    ...incoming.filter((item) => item && item.id !== recordId),
   ];
   await ctx.env.SITE_CONTENT.put(INCOMING_FICHAS_KEY, JSON.stringify(nextIncoming));
 
-  // 2. Si existe el estado global del CRM, actualizarlo
+  // 2. Immediately persist into the master CRM state in KV
   const current = (await ctx.env.SITE_CONTENT.get(CRM_STATE_KEY, 'json')) as StoredCrmState | null;
   let nextVersion = 1;
+  let alreadyExisted = false;
   if (current && Array.isArray(current.fichas)) {
+    alreadyExisted = current.fichas.some((item) => item && item.id === recordId);
     const nextFichas = [
       ficha,
-      ...current.fichas.filter((item) => item && item.id !== ficha.id),
+      ...current.fichas.filter((item) => item && item.id !== recordId),
     ];
+    const nextDeletedIds = Array.isArray(current.deletedFichaIds)
+      ? current.deletedFichaIds.filter((id) => id !== recordId)
+      : [];
     nextVersion = (current.version ?? 0) + 1;
     const nextState: StoredCrmState = {
       ...current,
       fichas: nextFichas,
+      deletedFichaIds: nextDeletedIds,
       version: nextVersion,
       updatedAt: new Date().toISOString(),
-      updatedBy: 'registro-alumna',
+      updatedBy: 'student-registration',
     };
     await ctx.env.SITE_CONTENT.put(CRM_STATE_KEY, JSON.stringify(nextState));
   }
 
-  // 3. Notificación automática por email a los administradores vía FormSubmit
-  const nombreAlumna = String(ficha.nombre_completo || `${ficha.nombre} ${ficha.apellido || ''}`).trim();
-  const emailAlumna = String(ficha.email || '').trim();
-  const telAlumna = String(ficha.telefono_whatsapp || '').trim();
-  const objetivo = String(ficha.objetivo_principal || 'No especificado').trim();
-  const ubicacion = String(ficha.localidad_pais || 'No especificada').trim();
+  // 3. Await admin email notifications cleanly so Cloudflare Workers does not kill the request on return
+  let emailNotified = false;
+  if (!skipNotifications && !alreadyExisted) {
+    const studentName = String(ficha.nombre_completo || `${ficha.nombre} ${ficha.apellido || ''}`).trim();
+    const studentEmail = String(ficha.email || '').trim();
+    const studentPhone = String(ficha.telefono_whatsapp || '').trim();
+    const primaryGoal = String(ficha.objetivo_principal || 'No especificado').trim();
+    const location = String(ficha.localidad_pais || 'No especificada').trim();
 
-  const emailBody = {
-    _captcha: 'false',
-    _template: 'table',
-    _subject: `🚨 NUEVA ALUMNA REGISTRADA EN TOTALHIIT: ${nombreAlumna}`,
-    _cc: 'ebolivar1000@gmail.com,caribialabs@gmail.com',
-    _replyto: emailAlumna || 'totalhiit1@gmail.com',
-    alumna: nombreAlumna,
-    whatsapp: telAlumna,
-    email: emailAlumna,
-    edad: ficha.edad,
-    ubicacion,
-    objetivo,
-    altura_peso: `${ficha.altura} | ${ficha.peso} (Talla ${ficha.talla_remera})`,
-    alergias: ficha.alergias,
-    lesiones_patologias: ficha.lesiones_desde_cuando || ficha.problemas_musculares_oseos,
-    medicamentos: ficha.medicamentos_detalle || ficha.toma_medicamentos,
-    contacto_emergencia: ficha.contacto_emergencia,
-    fecha_registro: ficha.fecha_registro,
-    link_crm: 'https://totalhiit.pages.dev/crm',
-  };
+    const emailBody = {
+      _captcha: 'false',
+      _template: 'table',
+      _subject: `🚨 NUEVA ALUMNA REGISTRADA EN TOTALHIIT: ${studentName}`,
+      _cc: 'caribialabs@gmail.com',
+      _replyto: studentEmail || 'totalhiit1@gmail.com',
+      alumna: studentName,
+      whatsapp: studentPhone,
+      email: studentEmail,
+      edad: ficha.edad,
+      ubicacion: location,
+      objetivo: primaryGoal,
+      altura_peso: `${ficha.altura} | ${ficha.peso} (Talla ${ficha.talla_remera})`,
+      alergias: ficha.alergias,
+      lesiones_patologias: ficha.lesiones_desde_cuando || ficha.problemas_musculares_oseos,
+      medicamentos: ficha.medicamentos_detalle || ficha.toma_medicamentos,
+      contacto_emergencia: ficha.contacto_emergencia,
+      fecha_registro: ficha.fecha_registro,
+      link_crm: 'https://totalhiit.pages.dev/crm',
+    };
 
-  // Enviar a totalhiit1@gmail.com y ebolivar1000@gmail.com como respaldo directo
-  try {
-    fetch('https://formsubmit.co/ajax/totalhiit1@gmail.com', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-        Origin: 'https://totalhiit.pages.dev',
-        Referer: 'https://totalhiit.pages.dev/crm/registro/',
-      },
-      body: JSON.stringify(emailBody),
-    }).catch(() => {});
+    const results = await Promise.allSettled([
+      sendAdminEmailNotification('https://formsubmit.co/ajax/totalhiit1@gmail.com', emailBody),
+      sendAdminEmailNotification('https://formsubmit.co/ajax/ebolivar1000@gmail.com', emailBody),
+    ]);
+    emailNotified = results.some((r) => r.status === 'fulfilled' && r.value === true);
+  }
 
-    fetch('https://formsubmit.co/ajax/ebolivar1000@gmail.com', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-        Origin: 'https://totalhiit.pages.dev',
-        Referer: 'https://totalhiit.pages.dev/crm/registro/',
-      },
-      body: JSON.stringify(emailBody),
-    }).catch(() => {});
-  } catch {}
-
-  return json({ ok: true, version: nextVersion, savedToIncoming: true });
+  return json({
+    ok: true,
+    persisted: true,
+    version: nextVersion,
+    savedToIncoming: true,
+    emailNotified,
+  });
 };

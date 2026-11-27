@@ -139,18 +139,20 @@ export const saveCrmStateRemote = async (
   email: string,
   key: string,
   state: CrmStatePayload,
-  baseVersion: number | null = null
+  baseVersion: number | null = null,
+  deletedFichaIds: string[] = []
 ): Promise<{
   ok: boolean;
   version?: number;
   updatedAt?: string;
   updatedBy?: string;
+  mergedNewFichas?: FichaRegistro[];
   error?: string;
 }> => {
   const res = await fetch('/api/crm', {
     method: 'POST',
     headers: buildHeaders(email, key),
-    body: JSON.stringify({ baseVersion, state }),
+    body: JSON.stringify({ baseVersion, state, deletedFichaIds }),
   });
 
   const data = (await res.json()) as {
@@ -158,6 +160,7 @@ export const saveCrmStateRemote = async (
     version?: number;
     updatedAt?: string;
     updatedBy?: string;
+    mergedNewFichas?: FichaRegistro[];
     error?: string;
   };
 
@@ -173,6 +176,7 @@ export const saveCrmStateRemote = async (
     version: data.version,
     updatedAt: data.updatedAt,
     updatedBy: data.updatedBy,
+    mergedNewFichas: Array.isArray(data.mergedNewFichas) ? data.mergedNewFichas : [],
   };
 };
 

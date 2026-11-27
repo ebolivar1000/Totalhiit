@@ -25,6 +25,7 @@ interface StoredCrmState extends CrmPayload {
   version: number;
   updatedAt: string;
   updatedBy: string;
+  deletedFichaIds?: string[];
 }
 
 const getStoredPassword = async (ctx: Ctx): Promise<string> => {
@@ -105,23 +106,28 @@ export const onRequestGet = async (ctx: Ctx): Promise<Response> => {
     return json({ ok: true, state: null, version: 0 });
   }
 
-  // Fusionar fichas entrantes que no estén aún en el estado persistido
-  let nuevasIncomingCount = 0;
+  // Merge incoming student registrations excluding explicitly deleted IDs
+  const deletedIdSet = new Set<string>(Array.isArray(stored.deletedFichaIds) ? stored.deletedFichaIds : []);
+  let newIncomingCount = 0;
   if (incoming.length > 0 && Array.isArray(stored.fichas)) {
-    const ids = new Set(
+    const existingIds = new Set(
       stored.fichas.map((f) => (f && typeof f === 'object' ? (f as Record<string, unknown>).id : null))
     );
-    const nuevas = incoming.filter((f) => f && typeof f === 'object' && !ids.has(f.id));
-    nuevasIncomingCount = nuevas.length;
-    if (nuevas.length > 0) {
-      stored.fichas = [...nuevas, ...stored.fichas];
+    const newRecords = incoming.filter((f) => {
+      if (!f || typeof f !== 'object') return false;
+      const id = typeof f.id === 'string' ? f.id : '';
+      return id && !existingIds.has(id) && !deletedIdSet.has(id);
+    });
+    newIncomingCount = newRecords.length;
+    if (newRecords.length > 0) {
+      stored.fichas = [...newRecords, ...stored.fichas];
     }
   }
 
   const url = new URL(ctx.request.url);
   const sinceRaw = url.searchParams.get('sinceVersion');
   const sinceVersion = sinceRaw !== null ? Number(sinceRaw) : NaN;
-  if (Number.isFinite(sinceVersion) && sinceVersion === stored.version && nuevasIncomingCount === 0) {
+  if (Number.isFinite(sinceVersion) && sinceVersion === stored.version && newIncomingCount === 0) {
     return json({
       ok: true,
       unchanged: true,
@@ -188,19 +194,47 @@ export const onRequestPost = async (ctx: Ctx): Promise<Response> => {
   const nextVersion = currentVersion + 1;
   const updatedAt = new Date().toISOString();
 
-  // Preservar cualquier ficha entrante registrada por alumnas que no esté aún en el payload del admin
+  // Track explicitly deleted registration IDs so stale tabs can never resurrect them,
+  // while preserving any newly submitted student registrations that this admin tab hasn't seen yet.
+  const requestDeletedIds = Array.isArray(reqObj.deletedFichaIds)
+    ? reqObj.deletedFichaIds.filter((id): id is string => typeof id === 'string' && id.trim().length > 0)
+    : [];
+  const deletedIdSet = new Set<string>([
+    ...(Array.isArray(current?.deletedFichaIds) ? current.deletedFichaIds : []),
+    ...requestDeletedIds,
+  ]);
+
   const incoming =
     ((await ctx.env.SITE_CONTENT.get('incoming_fichas_v1', 'json')) as Array<Record<string, unknown>>) || [];
-  let finalFichas = reqObj.state.fichas as Array<Record<string, unknown>>;
-  if (incoming.length > 0) {
-    const existingIds = new Set(
-      finalFichas.map((f) => (f && typeof f === 'object' ? (f as Record<string, unknown>).id : null))
-    );
-    const nuevas = incoming.filter((f) => f && typeof f === 'object' && !existingIds.has(f.id));
-    if (nuevas.length > 0) {
-      finalFichas = [...nuevas, ...finalFichas];
-    }
+
+  const payloadFichas = (reqObj.state.fichas as Array<Record<string, unknown>>).filter((f) => {
+    if (!f || typeof f !== 'object') return false;
+    const id = typeof f.id === 'string' ? f.id : '';
+    return !id || !deletedIdSet.has(id);
+  });
+
+  const payloadIds = new Set(
+    payloadFichas.map((f) => (f && typeof f === 'object' ? (f as Record<string, unknown>).id : null))
+  );
+
+  // Preserve registrations from both current KV state and incoming_fichas_v1 unless explicitly deleted
+  const mergedNewFichas: Array<Record<string, unknown>> = [];
+  const mergedNewIds = new Set<string>();
+
+  const candidates = [
+    ...incoming,
+    ...(Array.isArray(current?.fichas) ? (current.fichas as Array<Record<string, unknown>>) : []),
+  ];
+
+  for (const candidate of candidates) {
+    if (!candidate || typeof candidate !== 'object') continue;
+    const id = typeof candidate.id === 'string' ? candidate.id : '';
+    if (!id || deletedIdSet.has(id) || payloadIds.has(id) || mergedNewIds.has(id)) continue;
+    mergedNewIds.add(id);
+    mergedNewFichas.push(candidate);
   }
+
+  const finalFichas = mergedNewFichas.length > 0 ? [...mergedNewFichas, ...payloadFichas] : payloadFichas;
 
   const nextState: StoredCrmState = {
     paises: reqObj.state.paises,
@@ -213,14 +247,23 @@ export const onRequestPost = async (ctx: Ctx): Promise<Response> => {
     version: nextVersion,
     updatedAt,
     updatedBy: auth.email,
+    deletedFichaIds: Array.from(deletedIdSet),
   };
 
   await ctx.env.SITE_CONTENT.put(CRM_STATE_KEY, JSON.stringify(nextState));
 
-  // Limpiar fichas entrantes ya consolidadas en el estado principal para no acumularlas indefinidamente
+  // Clear incoming_fichas_v1 only for records that are now safely consolidated or deleted
   if (incoming.length > 0) {
     try {
-      await ctx.env.SITE_CONTENT.put('incoming_fichas_v1', JSON.stringify([]));
+      const consolidatedIds = new Set<string>([
+        ...Array.from(deletedIdSet),
+        ...finalFichas.map((f) => (typeof f.id === 'string' ? f.id : '')).filter(Boolean),
+      ]);
+      const remainingIncoming = incoming.filter((f) => {
+        const id = f && typeof f === 'object' && typeof f.id === 'string' ? f.id : '';
+        return id && !consolidatedIds.has(id);
+      });
+      await ctx.env.SITE_CONTENT.put('incoming_fichas_v1', JSON.stringify(remainingIncoming));
     } catch {}
   }
 
@@ -229,5 +272,6 @@ export const onRequestPost = async (ctx: Ctx): Promise<Response> => {
     version: nextVersion,
     updatedAt,
     updatedBy: auth.email,
+    mergedNewFichas,
   });
 };

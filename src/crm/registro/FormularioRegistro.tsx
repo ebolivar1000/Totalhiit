@@ -25,7 +25,6 @@ import {
 } from 'lucide-react';
 import {
   FichaRegistro,
-  FICHAS_INICIALES,
   COLUMNAS_49_GOOGLE_SHEETS,
   fichaAFila49,
 } from '../tiposFicha';
@@ -34,6 +33,51 @@ import { exportarAExcel, exportarAPDF } from '../exportador';
 const STORAGE_FICHAS = 'totalhiit_crm_fichas_registro_v4';
 const STORAGE_DRAFT = 'totalhiit_crm_registro_draft_v4';
 const STORAGE_FINALIZADA_ID = 'totalhiit_mi_ficha_id_v4';
+const STORAGE_CLOUD_SYNCED = 'totalhiit_mi_ficha_synced_v4';
+
+interface CloudPersistResult {
+  ok: boolean;
+  persisted: boolean;
+  emailNotified: boolean;
+  error?: string;
+}
+
+const persistRegistrationToCloud = async (
+  record: FichaRegistro,
+  skipNotifications = false,
+  maxAttempts = 3
+): Promise<CloudPersistResult> => {
+  let lastError = 'No se pudo conectar con el servidor.';
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const response = await fetch('/api/crm-ficha', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(skipNotifications ? { ...record, skipNotifications: true } : record),
+      });
+      const data = (await response.json().catch(() => ({}))) as {
+        ok?: boolean;
+        persisted?: boolean;
+        emailNotified?: boolean;
+        error?: string;
+      };
+      if (response.ok && data.ok && data.persisted !== false) {
+        return {
+          ok: true,
+          persisted: true,
+          emailNotified: Boolean(data.emailNotified),
+        };
+      }
+      lastError = data.error || `Error del servidor (HTTP ${response.status})`;
+    } catch {
+      lastError = 'Error de conexión con el servidor.';
+    }
+    if (attempt < maxAttempts) {
+      await new Promise((resolve) => setTimeout(resolve, 700 * attempt));
+    }
+  }
+  return { ok: false, persisted: false, emailNotified: false, error: lastError };
+};
 
 // Datos oficiales de contacto y notificaciones administrativas
 export const VALENTINA_WHATSAPP = '5491154188296'; // +54 11 5418 8296
@@ -181,6 +225,7 @@ export default function FormularioRegistro({ onVolverAdmin, esAdmin }: Props) {
   const [mensajeGuardado, setMensajeGuardado] = useState(false);
   const [mensajeCopiado, setMensajeCopiado] = useState(false);
   const [errorValidacion, setErrorValidacion] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Cargar si ya finalizó previamente en este dispositivo
   useEffect(() => {
@@ -193,14 +238,14 @@ export default function FormularioRegistro({ onVolverAdmin, esAdmin }: Props) {
           const encontrada = list.find((f) => f.id === miFichaId);
           if (encontrada && encontrada.finalizado) {
             setFichaFinalizada(encontrada);
-            // Re-sincronizar con el servidor por si antes falló la conexión
-            try {
-              fetch('/api/crm-ficha', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(encontrada),
-              }).catch(() => {});
-            } catch {}
+            // Only re-sync silently if cloud confirmation flag was not yet recorded
+            if (localStorage.getItem(STORAGE_CLOUD_SYNCED) !== '1') {
+              persistRegistrationToCloud(encontrada, true, 2).then((res) => {
+                if (res.ok) {
+                  localStorage.setItem(STORAGE_CLOUD_SYNCED, '1');
+                }
+              });
+            }
             return;
           }
         } catch {}
@@ -321,9 +366,10 @@ export default function FormularioRegistro({ onVolverAdmin, esAdmin }: Props) {
     setTimeout(() => setMensajeGuardado(false), 2000);
   };
 
-  // Finalizar Registro (Bloqueo Definitivo y Almacenamiento en BD)
-  const finalizarRegistro = (e: React.FormEvent) => {
+  // Finalizar Registro (Persistencia Garantizada en Cloudflare KV antes de Bloqueo y Notificación)
+  const finalizarRegistro = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
     setErrorValidacion('');
 
     if (!email.trim() || !nombre.trim() || !apellido.trim() || !telefonoWhatsapp.trim()) {
@@ -388,94 +434,73 @@ export default function FormularioRegistro({ onVolverAdmin, esAdmin }: Props) {
       compromiso_ayuda: compromisoAyuda,
     };
 
-    // Guardar en la base de datos compartida del CRM
-    let listaActual: FichaRegistro[] = [];
+    // 1. AWAIT cloud persistence FIRST — never notify or redirect before Cloudflare KV confirms the write
+    setIsSubmitting(true);
+    const persistResult = await persistRegistrationToCloud(nuevaFicha, false, 3);
+    if (!persistResult.ok) {
+      setIsSubmitting(false);
+      setErrorValidacion(
+        `No pudimos guardar tu ficha en el servidor (${persistResult.error || 'sin conexión'}). Por favor verifica tu internet y presiona FINALIZAR REGISTRO nuevamente.`
+      );
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    // 2. Store locally ONLY after cloud persistence succeeds (no mock seed injection!)
+    let currentLocalList: FichaRegistro[] = [];
     const raw = localStorage.getItem(STORAGE_FICHAS);
     if (raw) {
       try {
-        listaActual = JSON.parse(raw);
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) currentLocalList = parsed;
       } catch {}
     }
-    if (!Array.isArray(listaActual) || listaActual.length === 0) {
-      listaActual = FICHAS_INICIALES;
-    }
 
-    const actualizada = [nuevaFicha, ...listaActual.filter((x) => x.id !== nuevaFicha.id)];
-    localStorage.setItem(STORAGE_FICHAS, JSON.stringify(actualizada));
-    localStorage.setItem('totalhiit_crm_fichas_registro', JSON.stringify(actualizada));
+    const updatedLocalList = [nuevaFicha, ...currentLocalList.filter((x) => x.id !== nuevaFicha.id)];
+    localStorage.setItem(STORAGE_FICHAS, JSON.stringify(updatedLocalList));
+    localStorage.setItem('totalhiit_crm_fichas_registro', JSON.stringify(updatedLocalList));
     localStorage.removeItem(STORAGE_DRAFT);
     localStorage.setItem(STORAGE_FINALIZADA_ID, nuevaFicha.id);
+    localStorage.setItem(STORAGE_CLOUD_SYNCED, '1');
 
-    // 1. Enviar a la nube (Cloudflare KV) en segundo plano
-    try {
-      fetch('/api/crm-ficha', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(nuevaFicha),
-      }).catch(() => {});
-    } catch {}
+    // 3. Fallback browser email notification only if server-side FormSubmit did not confirm delivery
+    if (!persistResult.emailNotified) {
+      const emailPayload = {
+        _captcha: 'false',
+        _template: 'table',
+        _subject: `🚨 NUEVA ALUMNA REGISTRADA EN TOTALHIIT: ${nuevaFicha.nombre_completo}`,
+        _cc: ADMIN_EMAILS_CC,
+        _replyto: nuevaFicha.email || 'totalhiit1@gmail.com',
+        alumna: nuevaFicha.nombre_completo,
+        telefono_whatsapp: nuevaFicha.telefono_whatsapp,
+        email: nuevaFicha.email,
+        edad: nuevaFicha.edad,
+        ubicacion: nuevaFicha.localidad_pais,
+        objetivo_principal: nuevaFicha.objetivo_principal,
+        altura_peso: `${nuevaFicha.altura} | ${nuevaFicha.peso} (Talla ${nuevaFicha.talla_remera})`,
+        alergias: nuevaFicha.alergias,
+        problemas_o_lesiones: nuevaFicha.lesiones_desde_cuando || nuevaFicha.problemas_musculares_oseos,
+        medicamentos: nuevaFicha.medicamentos_detalle || nuevaFicha.toma_medicamentos,
+        contacto_emergencia: nuevaFicha.contacto_emergencia,
+        fecha_registro: nuevaFicha.fecha_registro,
+        enlace_crm: 'https://totalhiit.pages.dev/crm',
+      };
 
-    // 2. Enviar notificación por Email automática a los administradores vía FormSubmit
-    const payloadEmail = {
-      _captcha: 'false',
-      _template: 'table',
-      _subject: `🚨 NUEVA ALUMNA REGISTRADA EN TOTALHIIT: ${nuevaFicha.nombre_completo}`,
-      _cc: ADMIN_EMAILS_CC,
-      _replyto: nuevaFicha.email || 'totalhiit1@gmail.com',
-      alumna: nuevaFicha.nombre_completo,
-      telefono_whatsapp: nuevaFicha.telefono_whatsapp,
-      email: nuevaFicha.email,
-      edad: nuevaFicha.edad,
-      ubicacion: nuevaFicha.localidad_pais,
-      objetivo_principal: nuevaFicha.objetivo_principal,
-      altura_peso: `${nuevaFicha.altura} | ${nuevaFicha.peso} (Talla ${nuevaFicha.talla_remera})`,
-      alergias: nuevaFicha.alergias,
-      problemas_o_lesiones: nuevaFicha.lesiones_desde_cuando || nuevaFicha.problemas_musculares_oseos,
-      medicamentos: nuevaFicha.medicamentos_detalle || nuevaFicha.toma_medicamentos,
-      contacto_emergencia: nuevaFicha.contacto_emergencia,
-      fecha_registro: nuevaFicha.fecha_registro,
-      enlace_crm: 'https://totalhiit.pages.dev/crm',
-    };
-
-    try {
-      fetch('https://formsubmit.co/ajax/totalhiit1@gmail.com', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-          Origin: window.location.origin,
-          Referer: window.location.href,
-        },
-        body: JSON.stringify(payloadEmail),
-      }).catch(() => {});
-
-      fetch('https://formsubmit.co/ajax/ebolivar1000@gmail.com', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-          Origin: window.location.origin,
-          Referer: window.location.href,
-        },
-        body: JSON.stringify(payloadEmail),
-      }).catch(() => {});
-    } catch {}
-
-    // 3. Abrir WhatsApp DIRECTO a Valentina:
-    const waUrl = generarEnlaceWhatsAppAviso(nuevaFicha);
-    const esDispositivoMovil = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-
-    if (esDispositivoMovil) {
-      // En móvil, la navegación directa a wa.me abre la app nativa de WhatsApp
-      // sin ser bloqueada por los bloqueadores de ventanas emergentes (pop-ups)
-      window.location.href = waUrl;
-    } else {
       try {
-        window.open(waUrl, '_blank');
+        fetch('https://formsubmit.co/ajax/totalhiit1@gmail.com', {
+          method: 'POST',
+          keepalive: true,
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+          },
+          body: JSON.stringify(emailPayload),
+        }).catch(() => {});
       } catch {}
     }
 
-    // Bloquear formulario y mostrar vista de confirmación
+    // 4. Lock form and show confirmation screen with one-tap WhatsApp button (never abort requests via window.location.href!)
+    setIsSubmitting(false);
     setFichaFinalizada(nuevaFicha);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -1606,10 +1631,11 @@ export default function FormularioRegistro({ onVolverAdmin, esAdmin }: Props) {
 
             <button
               type="submit"
-              className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-700 hover:to-pink-700 px-8 py-3.5 text-xs font-black uppercase tracking-wide text-white shadow-md hover:shadow-lg transition cursor-pointer"
+              disabled={isSubmitting}
+              className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-700 hover:to-pink-700 disabled:opacity-60 disabled:cursor-not-allowed px-8 py-3.5 text-xs font-black uppercase tracking-wide text-white shadow-md hover:shadow-lg transition cursor-pointer"
             >
               <Lock size={16} />
-              <span>FINALIZAR REGISTRO</span>
+              <span>{isSubmitting ? 'GUARDANDO EN SERVIDOR...' : 'FINALIZAR REGISTRO'}</span>
             </button>
           </div>
         </form>
